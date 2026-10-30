@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>별빛 그림 전시 — 성탄 체험전시예배 운영 화면</title>
+<style>
+:root{
+  --bg:#0b1024; --card:#141a36; --line:#263063; --text:#eef0fb; --muted:#9aa3c7;
+  --gold:#f4c96b; --gold2:#ffdf9b; --green:#5fd39a;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px}
+button,select,input,textarea{font-family:inherit;font-size:14px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);background:#0e1430;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0 12px 0 0;display:flex;align-items:center;gap:8px}
+header h1 .star{color:var(--gold)}
+.sp{flex:1}
+.btn{border:1px solid var(--line);background:#1b2350;color:var(--text);padding:9px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#3b4790;background:#222b60}
+.btn.gold{background:linear-gradient(180deg,#f7d685,#e5b04b);color:#2a1d00;border-color:#e5b04b;font-weight:700}
+.btn.ghost{background:transparent}
+.btn.danger{color:#ffb4b4;border-color:#5a2a3a;background:#2a1424}
+.btn.on{background:#3a2f0e;border-color:var(--gold);color:var(--gold2)}
+.btn.big{font-size:18px;padding:14px 16px;width:100%;border-radius:14px}
+.btn[hidden]{display:none}
+main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;padding:16px 20px 40px;max-width:1500px;margin:0 auto}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{font-size:15px;margin:0 0 12px;color:var(--gold2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .n{background:var(--gold);color:#2a1d00;border-radius:50%;width:22px;height:22px;display:inline-grid;place-items:center;font-size:12px}
+.card h2 .tag{font-size:12px;color:var(--muted);font-weight:400}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row+.row{margin-top:10px}
+select,input[type=text],textarea{background:#0e1430;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+textarea{width:100%;resize:vertical}
+label.chk{display:inline-flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;user-select:none}
+.stage{position:relative;background:#05081a;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center;margin-top:12px}
+.stage canvas{max-width:100%;max-height:100%;display:block}
+#camMsg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);text-align:center;padding:20px;line-height:1.6}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.sliders{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+@media (max-width:600px){.sliders{grid-template-columns:repeat(2,1fr)}}
+.sl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input[type=range]{accent-color:var(--gold);width:100%}
+.hint{color:var(--muted);font-size:13px;line-height:1.6}
+.capgrid{display:grid;grid-template-columns:1fr 210px;gap:14px;align-items:start}
+@media (max-width:600px){.capgrid{grid-template-columns:1fr}}
+.checker{background-color:#2a3157;background-image:linear-gradient(45deg,#1e2446 25%,transparent 25%),linear-gradient(-45deg,#1e2446 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1e2446 75%),linear-gradient(-45deg,transparent 75%,#1e2446 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+#result{width:210px;height:190px;border-radius:12px;display:grid;place-items:center;overflow:hidden;color:var(--muted);font-size:12px;text-align:center}
+#result img{max-width:92%;max-height:92%}
+#resultInfo{margin-top:8px;font-size:13px;line-height:1.5;color:var(--gold2);min-height:40px}
+#mini{width:100%;aspect-ratio:16/9;display:block;border-radius:12px;background:#000}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:380px;overflow:auto;padding-right:4px}
+.thumb{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:1px solid var(--line);cursor:pointer;display:grid;place-items:center}
+.thumb img{max-width:84%;max-height:72%}
+.thumb .nm{position:absolute;left:0;right:0;bottom:0;font-size:11px;background:rgba(5,8,26,.78);padding:3px 4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cfd4f2}
+.thumb .nm:hover{color:var(--gold2)}
+.thumb .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(10,10,20,.8);color:#fff;cursor:pointer;font-size:12px;display:none}
+.thumb:hover .x{display:block}
+.thumb .kd{position:absolute;top:3px;left:3px;height:22px;min-width:22px;padding:0 5px;border-radius:11px;border:1px solid rgba(255,223,155,.5);background:rgba(10,10,20,.8);color:var(--gold2);cursor:pointer;font-size:12px}
+.thumb:hover{border-color:var(--gold)}
+.empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;grid-column:1/-1}
+.kbd{display:inline-block;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;font-size:12px;background:#0e1430;color:var(--gold2)}
+details{background:#10163a;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:12px}
+details summary{cursor:pointer;color:var(--gold2);font-weight:700}
+details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:#d6daf0;font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;font-size:13px;color:var(--muted)}
+.kinds{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px}
+@media (max-width:600px){.kinds{grid-template-columns:repeat(2,1fr)}}
+.kinds div{background:#10163a;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12px;color:var(--muted);line-height:1.45;text-align:center}
+.kinds b{display:block;color:var(--gold2);font-size:15px}
+#folderStatus{margin-top:10px;padding:10px 12px;border-radius:10px;background:#0e1430;border:1px solid var(--line);font-size:13px;line-height:1.6;color:var(--muted)}
+#folderStatus b{color:var(--green)}
+#folderStatus .warn{color:#ffb98a}
+#inDisplay{position:fixed;inset:0;background:#000;z-index:50;display:none}
+#inDisplay.show{display:block}
+#inDisplay canvas{width:100%;height:100%;display:block;cursor:none}
+#inHint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);color:rgba(255,255,255,.55);font-size:13px;background:rgba(0,0,0,.35);padding:6px 12px;border-radius:20px;transition:opacity 1s}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1f2759;border:1px solid var(--gold);color:var(--text);padding:12px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.3s;z-index:100;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:90}
+#modal.show{display:grid}
+#modal .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:400px;width:90vw}
+#modal p{margin:0 0 14px;line-height:1.6}
+#modal input{width:100%;margin-bottom:14px}
+#modal .row{justify-content:flex-end}
+.qrgrid{display:grid;grid-template-columns:1fr 230px;gap:14px;align-items:start}
+@media (max-width:600px){.qrgrid{grid-template-columns:1fr}}
+#qrBox{width:230px;height:230px;border-radius:14px;background:#fff;display:grid;place-items:center;color:#667;font-size:13px;text-align:center;padding:10px;margin:0 auto}
+#qrBox img,#qrBox canvas{width:100%!important;height:auto!important}
+#cloudStatus{margin-top:10px;padding:10px 12px;border-radius:10px;background:#0e1430;border:1px solid var(--line);font-size:13px;line-height:1.6;color:var(--muted)}
+#cloudStatus b{color:var(--green)} #cloudStatus .warn{color:#ffb98a}
+/* 휴대폰 보내기 화면 */
+.ph{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 20px 40px;text-align:center;background:radial-gradient(ellipse at top,#1d2560,#070a1e 70%);gap:14px}
+.ph-star{font-size:54px;color:var(--gold);text-shadow:0 0 30px rgba(255,214,120,.8)}
+.ph h1{font-size:24px;margin:4px 0}
+.ph h2{font-size:26px;margin:0}
+.ph p{color:#c7cdf0;margin:0;line-height:1.6}
+.ph-btn{display:block;width:100%;max-width:360px;font-size:20px;font-weight:700;padding:18px;border-radius:16px;border:1px solid var(--line);background:#1b2350;color:#fff;cursor:pointer;margin:8px auto}
+.ph-btn.gold{background:linear-gradient(180deg,#f7d685,#e5b04b);color:#2a1d00;border-color:#e5b04b}
+.ph-btn:disabled{opacity:.6}
+.ph-link{color:var(--gold2);text-decoration:underline;font-size:15px;cursor:pointer}
+.ph img#phPrev{max-width:100%;max-height:46vh;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.ph input[type=text]{width:100%;max-width:360px;font-size:17px;padding:12px 14px;border-radius:12px}
+.ph-done{font-size:80px;animation:pop .8s ease}
+@keyframes pop{0%{transform:scale(.2) rotate(-30deg);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+#phMsg{color:#ffb98a;min-height:22px}
+.status{font-size:12px;color:var(--muted)}
+.status b{color:var(--green)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="star">★</span> 별빛 그림 전시 <span class="status" id="hdrCount"></span></h1>
+  <button class="btn gold" id="btnPopup">🖥 전시 화면 새 창 열기</button>
+  <button class="btn" id="btnInline">이 창에서 전시 보기 <span class="kbd">F</span></button>
+  <button class="btn" id="btnGather">✨ 구유로 모이기 <span class="kbd">G</span></button>
+  <span class="sp"></span>
+  <span class="status" id="popupStatus">전시 창: 닫힘</span>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card" style="border-color:#5a4a1e">
+      <h2><span class="n">★</span> QR로 찍어서 바로 보내기 <span class="tag">— 가장 간편한 방법 (추천)</span></h2>
+      <div class="qrgrid">
+        <div>
+          <div class="field">Firebase 설정 (처음 한 번만 붙여 넣기)
+            <textarea id="fbCfg" rows="3" placeholder="const firebaseConfig = { apiKey: &quot;...&quot;, projectId: &quot;...&quot;, ... };  ← 통째로 붙여 넣으세요"></textarea>
+          </div>
+          <div class="field">휴대폰이 접속할 이 화면의 인터넷 주소
+            <input type="text" id="baseUrl" placeholder="예: https://아이디.github.io/xmas-gallery/">
+          </div>
+          <div class="row">
+            <button class="btn gold" id="btnCloud">📡 연결하고 QR 만들기</button>
+            <button class="btn ghost" id="btnNewRoom" title="이전 QR은 더 이상 쓸 수 없게 됩니다">🔄 새 QR</button>
+          </div>
+          <div id="cloudStatus">아직 연결하지 않았습니다.</div>
+        </div>
+        <div>
+          <div id="qrBox"><span>QR이 여기에 나타납니다</span></div>
+          <div class="row" style="justify-content:center;margin-top:8px">
+            <button class="btn ghost" id="btnCopyLink">🔗 링크 복사</button>
+          </div>
+          <label class="chk" style="justify-content:center;width:100%;margin-top:6px"><input type="checkbox" id="showQR"> 전시 화면 구석에 QR 띄우기</label>
+        </div>
+      </div>
+      <details>
+        <summary>🛠 처음 한 번 준비하기 (약 20분, 무료·터미널 없음)</summary>
+        <p class="hint" style="margin:8px 0 0"><b>A. Firebase (휴대폰 → 전시 화면 중계)</b></p>
+        <ol>
+          <li><b>console.firebase.google.com</b>에 교회 구글 계정으로 들어가 <b>프로젝트 추가</b>를 누릅니다. 이름은 예를 들어 xmas-gallery로 정하고, 애널리틱스는 꺼도 됩니다.</li>
+          <li>왼쪽 메뉴 <b>빌드 → Firestore Database → 데이터베이스 만들기</b>를 누릅니다. 버전을 물으면 Standard, 위치는 <b>asia-northeast3 (서울)</b>, <b>프로덕션 모드</b>를 고릅니다.</li>
+          <li>Firestore의 <b>규칙</b> 탭에서 내용을 모두 지우고, 아래 규칙을 붙여 넣은 뒤 <b>게시</b>를 누릅니다.</li>
+          <li>왼쪽 위 톱니바퀴 <b>프로젝트 설정 → 내 앱 → 웹(&lt;/&gt;)</b>에서 앱 이름을 넣고 등록합니다. 화면에 나오는 <b>firebaseConfig</b> 부분을 통째로 복사해 위 ‘Firebase 설정’ 칸에 붙여 넣습니다.</li>
+        </ol>
+        <div class="row"><button class="btn ghost" id="btnCopyRules">📋 규칙 복사</button><span class="hint">복사한 규칙을 Firestore ‘규칙’ 탭에 붙여 넣으세요.</span></div>
+        <p class="hint" style="margin:12px 0 0"><b>B. 이 파일을 인터넷 주소로 올리기 (GitHub Pages)</b></p>
+        <ol>
+          <li>github.com에 로그인한 뒤 <b>New repository</b>를 누르고, 이름(예: xmas-gallery)을 넣고 <b>Public</b>으로 만듭니다.</li>
+          <li><b>uploading an existing file</b>을 누르고 이 파일을 올립니다. 올리기 전에 파일 이름을 <b>index.html</b>로 바꿔 주세요. <b>Commit changes</b>를 누릅니다.</li>
+          <li><b>Settings → Pages</b>에서 Branch를 <b>main</b>으로 고르고 <b>Save</b>를 누릅니다. 1~2분 뒤 <b>https://아이디.github.io/xmas-gallery/</b> 주소가 생깁니다.</li>
+          <li>노트북에서는 그 주소로 접속해 이 화면을 쓰세요. 주소는 위 칸에 자동으로 채워집니다.</li>
+        </ol>
+        <p class="hint" style="margin:8px 0 0">휴대폰이 보낸 사진은 전시 화면이 받는 즉시 Firebase에서 지워지고, 이 노트북에만 저장됩니다. 행사가 끝나면 ‘새 QR’을 눌러 이전 QR을 막아 두세요.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2><span class="n">1</span> 휴대폰 사진 자동 가져오기 <span class="tag">— 폴더 방식 (인터넷 주소 없이 쓸 때)</span></h2>
+      <div class="row">
+        <button class="btn gold" id="btnFolder">📁 사진 폴더 연결</button>
+        <button class="btn" id="btnResume" hidden>▶ 폴더 다시 연결</button>
+        <button class="btn" id="btnFolderStop" hidden>⏸ 멈추기</button>
+        <label class="chk"><input type="checkbox" id="importExisting"> 폴더에 이미 있던 사진도 가져오기</label>
+      </div>
+      <div id="folderStatus">연결된 폴더가 없습니다. 휴대폰 사진이 모이는 폴더를 연결하면, 새 사진이 들어올 때마다 자동으로 전시 화면에 나타납니다.</div>
+      <details>
+        <summary>📱 휴대폰 사진을 노트북 폴더로 보내는 방법</summary>
+        <p class="hint" style="margin:8px 0 0"><b>방법 A. 구글 드라이브 (교사 여러 명이 찍을 때 추천)</b></p>
+        <ol>
+          <li>노트북에 <b>Google Drive 데스크톱</b> 앱을 설치하고 교회 구글 계정으로 로그인합니다. 파일 탐색기에 ‘Google Drive’가 생깁니다.</li>
+          <li>구글 드라이브에 <b>성탄전시사진</b> 폴더를 만들고, 사진 담당 교사들에게 ‘편집자’로 공유합니다.</li>
+          <li>이 화면에서 <b>사진 폴더 연결</b>을 누르고 Google Drive → 내 드라이브 → 성탄전시사진을 고른 뒤 ‘보기’를 허용합니다.</li>
+          <li>교사는 휴대폰으로 그림을 찍고 <b>구글 드라이브 앱 → 성탄전시사진 폴더 → ＋ → 업로드</b>로 올립니다. 보통 몇 초에서 수십 초 뒤 화면에 등장합니다.</li>
+        </ol>
+        <p class="hint" style="margin:8px 0 0"><b>방법 B. 휴대폰 한 대로 바로 보내기</b></p>
+        <ul>
+          <li>갤럭시 + 윈도우 노트북: <b>퀵 셰어(Quick Share)</b>로 보내면 노트북의 ‘다운로드’ 폴더(또는 그 안의 Quick Share 폴더)에 저장됩니다. 그 폴더를 연결하세요.</li>
+          <li>아이폰 + 맥북: <b>에어드롭</b>으로 보내면 ‘다운로드’ 폴더에 저장됩니다.</li>
+        </ul>
+        <p class="hint" style="margin:8px 0 0"><b>사진 찍는 요령</b></p>
+        <ul>
+          <li>종이를 <b>어두운 천, 검은 색지, 진한 책상</b> 위에 놓고 바로 위에서 찍습니다. 바닥과 종이 색이 다를수록 모양을 정확히 오려 냅니다.</li>
+          <li>종이 전체가 화면 안에 들어오게, 그림자가 지지 않게 찍어 주세요.</li>
+          <li>아이폰은 <b>설정 → 카메라 → 포맷 → 높은 호환성</b>으로 바꿔 주세요. 기본 형식(HEIC)은 열리지 않습니다.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2><span class="n">2</span> 모양 인식과 결과</h2>
+      <div class="capgrid">
+        <div>
+          <div class="field">오려내는 방식
+            <select id="mode">
+              <option value="paper">종이 모양 그대로 (별·하트·트리 종이에 그릴 때)</option>
+              <option value="draw">그림만 오려내기 (흰 종이에 그릴 때)</option>
+            </select>
+          </div>
+          <div class="field">새 그림의 모양
+            <select id="forceKind">
+              <option value="auto">자동 인식</option>
+              <option value="star">모두 ★ 별로</option>
+              <option value="heart">모두 ♥ 하트로</option>
+              <option value="tree">모두 🎄 트리로</option>
+              <option value="circle">모두 ● 등불로</option>
+              <option value="card">모두 ▢ 그림 카드로</option>
+            </select>
+          </div>
+          <div class="field">이름 (선택: 카메라 촬영·직접 추가할 때 표시)
+            <input type="text" id="nameIn" placeholder="예: 유치부 하은" maxlength="20">
+          </div>
+          <div class="row">
+            <label class="btn" style="display:inline-block">🖼 사진 파일 직접 추가
+              <input type="file" id="fileIn" accept="image/*" multiple hidden>
+            </label>
+            <button class="btn ghost" id="btnUndo">↩ 방금 그림 지우기</button>
+          </div>
+        </div>
+        <div>
+          <div id="result" class="checker">인식한 그림이<br>여기에 보입니다</div>
+          <div id="resultInfo"></div>
+        </div>
+      </div>
+      <div class="kinds">
+        <div><b>★ 별</b>하늘 높이 떠서 빙글 돌며 반짝여요</div>
+        <div><b>♥ 하트</b>두근두근 뛰며 떠다녀요</div>
+        <div><b>🎄 트리</b>언덕에 심겨 흔들리고 불빛이 켜져요</div>
+        <div><b>● 동그라미</b>등불처럼 천천히 하늘로 올라가요</div>
+        <div><b>▢ 그 밖의 모양</b>그림 카드로 밤하늘을 떠다녀요</div>
+      </div>
+      <p class="hint" style="margin:10px 0 0">잘못 인식했다면 아래 ‘도착한 그림’에서 썸네일 왼쪽 위의 모양 표시를 누르세요. 누를 때마다 모양이 바뀝니다.</p>
+      <details>
+        <summary>세부 조정</summary>
+        <div class="field" style="margin-top:10px">배경 지우기 강도 (그림만 오려내기 방식) <span id="thrVal"></span>
+          <input type="range" id="thr" min="0.05" max="0.32" step="0.01">
+          <span class="hint" style="font-size:12px">← 연한 색도 살리기 · 종이 얼룩까지 지우기 →</span>
+        </div>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="sticker"> 흰 스티커 테두리</label>
+          <label class="chk"><input type="checkbox" id="fillHoles"> 그림 안쪽 흰 부분 살리기</label>
+          <label class="chk"><input type="checkbox" id="despeckle"> 작은 점 지우기</label>
+          <label class="chk"><input type="checkbox" id="edgeRemove"> 가장자리에 닿은 부분 지우기</label>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2><span class="n">3</span> 카메라로 직접 촬영 <span class="tag">— 실물화상기·웹캠이 있을 때 (선택)</span></h2>
+      <div class="row">
+        <button class="btn" id="btnCam">📷 카메라 켜기</button>
+        <select id="camSel" title="카메라 선택"><option value="">기본 카메라</option></select>
+        <select id="rot" title="화면 회전">
+          <option value="0">회전 없음</option><option value="90">90° 회전</option>
+          <option value="180">180° 회전</option><option value="270">270° 회전</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="mirror"> 좌우 반전</label>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="preview"></canvas>
+        <div id="camMsg">카메라를 쓰려면 ‘카메라 켜기’를 누르세요.</div>
+        <div id="flash"></div>
+      </div>
+      <div class="sliders">
+        <div class="sl">위쪽 여백 <input type="range" min="0" max="40" id="mT"></div>
+        <div class="sl">아래쪽 여백 <input type="range" min="0" max="40" id="mB"></div>
+        <div class="sl">왼쪽 여백 <input type="range" min="0" max="40" id="mL"></div>
+        <div class="sl">오른쪽 여백 <input type="range" min="0" max="40" id="mR"></div>
+      </div>
+      <button class="btn gold big" id="btnCapture" style="margin-top:12px">📸 촬영해서 하늘로 보내기 <span class="kbd">Space</span></button>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2><span class="n">4</span> 전시 화면 미리보기</h2>
+      <canvas id="mini"></canvas>
+      <p class="hint" style="margin:8px 0 0">단축키: <span class="kbd">Space</span> 촬영 · <span class="kbd">G</span> 구유로 모이기 · <span class="kbd">F</span> 이 창 전시 · <span class="kbd">Esc</span> 나가기</p>
+    </section>
+
+    <section class="card">
+      <h2><span class="n">5</span> 도착한 그림 <span class="status" id="galCount"></span></h2>
+      <div class="gallery" id="gallery"></div>
+      <p class="hint" style="margin:8px 0 0;font-size:12px">썸네일 클릭: 화면 가운데에 다시 소개 · 모양 표시 클릭: 모양 바꾸기 · 아래 이름 클릭: 이름 넣기</p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="btnExport">💾 백업 내보내기</button>
+        <label class="btn" style="display:inline-block">📂 백업 불러오기<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+        <span class="sp"></span>
+        <button class="btn danger" id="btnClear">모두 지우기</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><span class="n">6</span> 화면 문구 설정</h2>
+      <div class="field">화면 제목<input type="text" id="title"></div>
+      <div class="field">‘구유로 모이기’ 때 떠오르는 말씀<textarea id="verse" rows="2"></textarea></div>
+      <div class="field">말씀 출처<input type="text" id="ref"></div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="showNames"> 이름 표시</label>
+        <label class="chk"><input type="checkbox" id="sound"> 그림 도착 효과음</label>
+      </div>
+    </section>
+
+    <details style="margin-top:0">
+      <summary>📋 예배 당일 진행 순서</summary>
+      <ol>
+        <li>노트북을 프로젝터와 HDMI로 연결하고, 윈도우는 <span class="kbd">Win</span>+<span class="kbd">P</span> → <b>확장</b>을 고릅니다.</li>
+        <li>이 파일을 <b>크롬</b>으로 열고 <b>사진 폴더 연결</b>을 합니다. 실물화상기가 있으면 카메라를 써도 됩니다.</li>
+        <li><b>전시 화면 새 창 열기</b> → 새 창을 프로젝터 화면으로 끌어다 놓고 <b>더블클릭</b>하면 전체화면이 됩니다.</li>
+        <li>아이들이 그리면 교사가 찍어 올립니다. 그림이 가운데에 크게 나타났다가 모양에 맞는 자리로 날아갑니다.</li>
+        <li>마지막 순서에서 <b>구유로 모이기(G)</b>를 누르면 별은 큰 별 곁으로, 하트·등불·그림은 구유 앞으로 모이고, 말씀이 떠오릅니다.</li>
+        <li>행사가 끝나면 <b>백업 내보내기</b>로 그림을 꼭 저장해 두세요.</li>
+      </ol>
+    </details>
+  </div>
+</main>
+
+<div id="inDisplay"><canvas id="inCanvas"></canvas><div id="inHint">Esc 나가기 · Space 촬영 · G 구유로 모이기</div></div>
+<div id="toast"></div>
+<div id="modal"><div class="box"><p id="modalMsg"></p><input type="text" id="modalIn" maxlength="20"><div class="row"><button class="btn" id="modalNo">취소</button><button class="btn danger" id="modalYes">확인</button></div></div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const FONT = '"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+const QS = new URLSearchParams(location.search);
+const FB_VER = '10.12.2';
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function loadFirebase(){
+  if(window.firebase && window.firebase.firestore) return;
+  await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app-compat.js`);
+  await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore-compat.js`);
+}
+function fbDb(apiKey, projectId){
+  const name='xmas'; let app=(firebase.apps||[]).find(a=>a.name===name);
+  if(!app) app=firebase.initializeApp({apiKey, projectId, authDomain:projectId+'.firebaseapp.com'}, name);
+  return app.firestore();
+}
+
+/* ================= 휴대폰 '그림 보내기' 화면 ================= */
+if(QS.has('send')){ phoneMode(); return; }
+function phoneMode(){
+  const room=(QS.get('r')||'').replace(/[^a-z0-9]/gi,''), projectId=QS.get('p')||'', apiKey=QS.get('k')||'';
+  document.title='★ 그림을 하늘로 보내요';
+  document.body.innerHTML=`
+  <div class="ph">
+    <div class="ph-star">★</div>
+    <h1>그림을 하늘로 보내요</h1>
+    <p>종이를 <b>어두운 바닥</b> 위에 놓고<br>바로 위에서 종이 전체가 나오게 찍어 주세요.</p>
+    <div id="phStep1" style="width:100%">
+      <label class="ph-btn gold">📷 그림 찍기<input type="file" accept="image/*" capture="environment" id="phCam" hidden></label>
+      <label class="ph-link">또는 앨범에서 고르기<input type="file" accept="image/*" id="phAlbum" hidden></label>
+    </div>
+    <div id="phStep2" style="width:100%;display:none">
+      <img id="phPrev" alt="찍은 그림">
+      <p style="margin:12px 0 6px">화면에 이름을 함께 띄울까요? (선택)</p>
+      <input type="text" id="phName" maxlength="20" placeholder="예: 유치부 하은">
+      <button class="ph-btn gold" id="phSend">✨ 하늘로 보내기</button>
+      <button class="ph-btn" id="phRetake">다시 찍기</button>
+    </div>
+    <div id="phStep3" style="width:100%;display:none">
+      <div class="ph-done">✨</div>
+      <h2>보냈어요!</h2>
+      <p style="margin:8px 0 16px">앞에 있는 큰 화면을 보세요.<br>그림이 곧 하늘에 나타나요.</p>
+      <button class="ph-btn gold" id="phMore">📷 한 장 더 찍기</button>
+    </div>
+    <div id="phMsg"></div>
+  </div>`;
+  const $p=s=>document.querySelector(s), msg=t=>{ $p('#phMsg').textContent=t||''; };
+  const step=n=>{ ['#phStep1','#phStep2','#phStep3'].forEach((s,i)=>$p(s).style.display=(i===n-1)?'block':'none'); msg(''); };
+  if(!room||!projectId||!apiKey){ msg('QR 정보가 올바르지 않아요. 전시 화면의 QR을 다시 찍어 주세요.'); $p('#phStep1').style.display='none'; return; }
+  loadFirebase().catch(()=>{});
+  let dataUrl='';
+  async function prep(file){
+    const url=URL.createObjectURL(file);
+    try{ const im=await loadImg(url); let c=fitCanvas(im,1280), q=0.85, d=c.toDataURL('image/jpeg',q);
+      while(d.length>900000&&q>0.45){ q-=0.1; d=c.toDataURL('image/jpeg',q); }
+      if(d.length>900000){ c=fitCanvas(c,900); d=c.toDataURL('image/jpeg',0.7); }
+      return d; } finally { URL.revokeObjectURL(url); }
+  }
+  async function onPick(e){
+    const f=e.target.files[0]; e.target.value=''; if(!f) return;
+    msg('사진을 준비하는 중…');
+    try{ dataUrl=await prep(f); $p('#phPrev').src=dataUrl; step(2); }
+    catch(err){ msg('이 사진은 열 수 없어요. 아이폰이라면 설정 → 카메라 → 포맷 → ‘높은 호환성’으로 바꿔 주세요.'); }
+  }
+  $p('#phCam').addEventListener('change',onPick);
+  $p('#phAlbum').addEventListener('change',onPick);
+  $p('#phRetake').addEventListener('click',()=>step(1));
+  $p('#phMore').addEventListener('click',()=>{ step(1); $p('#phCam').click(); });
+  $p('#phSend').addEventListener('click',async()=>{
+    const b=$p('#phSend'); b.disabled=true; b.textContent='보내는 중…'; msg('');
+    try{
+      await loadFirebase();
+      const db=fbDb(apiKey,projectId);
+      await db.collection('rooms').doc(room).collection('photos').add({img:dataUrl, name:($p('#phName').value||'').trim().slice(0,20), created:firebase.firestore.FieldValue.serverTimestamp()});
+      $p('#phName').value=''; step(3);
+    }catch(err){ msg('보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'); }
+    b.disabled=false; b.textContent='✨ 하늘로 보내기';
+  });
+}
+
+const KIND = {
+  star:  {icon:'★', name:'별',    act:'하늘 높이 올라가 반짝여요', pc:'255,224,150'},
+  heart: {icon:'♥', name:'하트',  act:'두근두근 뛰며 떠다녀요',   pc:'255,150,185'},
+  tree:  {icon:'🎄', name:'트리', act:'언덕에 심겨 불빛을 밝혀요', pc:'160,240,170'},
+  circle:{icon:'●', name:'등불',  act:'천천히 하늘로 올라가요',   pc:'255,200,120'},
+  card:  {icon:'▢', name:'그림 카드', act:'밤하늘을 천천히 떠다녀요', pc:'255,255,255'}
+};
+const KIND_ORDER=['star','heart','tree','circle','card'];
+
+/* ---------------- 설정 ---------------- */
+const DEFAULTS = {
+  title:'아기 예수께 드리는 우리의 선물',
+  verse:'우리가 동방에서 그의 별을 보고 그에게 경배하러 왔노라',
+  ref:'마태복음 2:2',
+  showNames:true, sound:true, thr:0.14, sticker:true, fillHoles:true, despeckle:true, edgeRemove:false,
+  mode:'paper', forceKind:'auto', fbCfg:'', baseUrl:'', room:'', showQR:true, cloudOn:false,
+  mT:6, mB:6, mL:6, mR:6, rot:0, mirror:false, camId:''
+};
+let S = Object.assign({}, DEFAULTS);
+try { Object.assign(S, JSON.parse(localStorage.getItem('xmasGallerySettings')||'{}')); } catch(e){}
+function saveS(){ try{ localStorage.setItem('xmasGallerySettings', JSON.stringify(S)); }catch(e){} }
+function bind(id, key, type){
+  const el = $('#'+id);
+  if(type==='chk'){ el.checked = !!S[key]; el.addEventListener('change',()=>{S[key]=el.checked; saveS(); onSetting(key);}); }
+  else if(type==='num'){ el.value = S[key]; el.addEventListener('input',()=>{S[key]=parseFloat(el.value); saveS(); onSetting(key);}); }
+  else { el.value = S[key]; el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{S[key]=el.value; saveS(); onSetting(key);}); }
+}
+['mT','mB','mL','mR','thr'].forEach(k=>bind(k,k,'num'));
+['sticker','fillHoles','despeckle','edgeRemove','showNames','sound','mirror'].forEach(k=>bind(k,k,'chk'));
+if(!S.room){ S.room=Math.random().toString(36).slice(2,8); saveS(); }
+if(!S.baseUrl && /^https?:$/.test(location.protocol)){ S.baseUrl=location.origin+location.pathname; }
+['title','verse','ref','mode','forceKind','fbCfg','baseUrl'].forEach(k=>bind(k,k,'txt'));
+bind('showQR','showQR','chk');
+$('#rot').value = String(S.rot);
+$('#rot').addEventListener('change',()=>{ S.rot=parseInt($('#rot').value,10); saveS(); });
+function onSetting(k){ if(k==='thr') $('#thrVal').textContent = '('+Math.round(S.thr*100)+')'; }
+onSetting('thr');
+
+/* ---------------- 공통 UI ---------------- */
+let toastTimer;
+function toast(msg, ms=2800){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'), ms); }
+function modal(msg, yes, withInput, value){
+  return new Promise(res=>{
+    $('#modalMsg').textContent=msg; $('#modalYes').textContent=yes;
+    const inp=$('#modalIn'); inp.style.display=withInput?'block':'none'; inp.value=value||'';
+    $('#modalYes').className = withInput ? 'btn gold' : 'btn danger';
+    $('#modal').classList.add('show'); if(withInput) setTimeout(()=>inp.focus(),30);
+    const done=v=>{ $('#modal').classList.remove('show'); $('#modalYes').onclick=$('#modalNo').onclick=inp.onkeydown=null; res(v); };
+    $('#modalYes').onclick=()=>done(withInput?inp.value:true); $('#modalNo').onclick=()=>done(withInput?null:false);
+    inp.onkeydown=e=>{ if(e.key==='Enter') done(inp.value); if(e.key==='Escape') done(null); };
+  });
+}
+const confirmBox=(m,y='확인')=>modal(m,y,false);
+const promptBox=(m,v)=>modal(m,'저장',true,v);
+
+/* ---------------- 저장소 (IndexedDB) ---------------- */
+let db=null;
+function dbOpen(){
+  return new Promise(res=>{
+    try{
+      const rq = indexedDB.open('xmasGallery',2);
+      rq.onupgradeneeded = ()=>{ const d=rq.result;
+        if(!d.objectStoreNames.contains('drawings')) d.createObjectStore('drawings',{keyPath:'id'});
+        if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta'); };
+      rq.onsuccess = ()=>{ db=rq.result; res(true); };
+      rq.onerror = ()=>res(false);
+    }catch(e){ res(false); }
+  });
+}
+function dbTx(store, mode, fn){
+  return new Promise(res=>{
+    if(!db) return res(null);
+    try{ const tx=db.transaction(store,mode); const r=fn(tx.objectStore(store));
+      tx.oncomplete=()=>res(r && r.result!==undefined ? r.result : true); tx.onerror=()=>res(null);
+    }catch(e){ res(null); }
+  });
+}
+const dbAll = ()=>dbTx('drawings','readonly', st=>st.getAll());
+const dbPut = rec=>dbTx('drawings','readwrite', st=>st.put(rec));
+const dbDel = id=>dbTx('drawings','readwrite', st=>st.delete(id));
+const dbClear = ()=>dbTx('drawings','readwrite', st=>st.clear());
+const metaGet = k=>dbTx('meta','readonly', st=>st.get(k));
+const metaPut = (k,v)=>dbTx('meta','readwrite', st=>st.put(v,k));
+const toRec = d=>({id:d.id,name:d.name,dataURL:d.dataURL,created:d.created,kind:d.kind});
+
+/* ---------------- 카메라 ---------------- */
+const video = document.createElement('video');
+video.muted = true; video.playsInline = true;
+Object.assign(video.style,{position:'fixed',left:'-10px',top:'-10px',width:'2px',height:'2px',opacity:'0',pointerEvents:'none'});
+document.body.appendChild(video);
+let stream=null;
+async function listCams(){
+  try{
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    const sel=$('#camSel'); sel.innerHTML='';
+    devs.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('카메라 '+(i+1)); sel.appendChild(o); });
+    if(!devs.length) sel.innerHTML='<option value="">카메라 없음</option>';
+    const cur=stream&&stream.getVideoTracks()[0]&&stream.getVideoTracks()[0].getSettings().deviceId; if(cur) sel.value=cur;
+  }catch(e){}
+}
+async function startCamera(id){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast('이 브라우저에서는 카메라를 쓸 수 없어요. 크롬으로 열어 주세요.'); return; }
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  const base={width:{ideal:1920},height:{ideal:1080}};
+  let err=null;
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:id?Object.assign({deviceId:{exact:id}},base):base,audio:false}); }
+  catch(e){ err=e; if(id){ try{ stream=await navigator.mediaDevices.getUserMedia({video:base,audio:false}); err=null; }catch(e2){ err=e2; } } }
+  if(!stream){
+    $('#camMsg').style.display='grid';
+    $('#camMsg').innerHTML=(err&&err.name==='NotAllowedError')
+      ? '카메라 권한이 거부되었어요.<br>주소창 왼쪽 아이콘을 눌러 카메라를 ‘허용’으로 바꾼 뒤 다시 눌러 주세요.'
+      : '카메라를 찾지 못했어요.<br>USB 연결을 확인하고, 다른 프로그램이 카메라를 쓰고 있지 않은지 확인해 주세요.';
+    return;
+  }
+  video.srcObject=stream; try{ await video.play(); }catch(e){}
+  $('#camMsg').style.display='none';
+  const tid=stream.getVideoTracks()[0].getSettings().deviceId; if(tid){ S.camId=tid; saveS(); }
+  await listCams(); $('#btnCam').textContent='📷 카메라 다시 켜기';
+}
+$('#btnCam').addEventListener('click',()=>{ ensureAudio(); startCamera(S.camId); });
+$('#camSel').addEventListener('change',()=>startCamera($('#camSel').value));
+function drawOriented(c, maxSide){
+  const vw=video.videoWidth, vh=video.videoHeight; if(!vw||!vh) return false;
+  const r=((S.rot%360)+360)%360, swap=(r===90||r===270);
+  const sw=swap?vh:vw, sh=swap?vw:vh, sc=Math.min(1,maxSide/Math.max(sw,sh));
+  const W=Math.round(sw*sc), H=Math.round(sh*sc);
+  if(c.width!==W) c.width=W; if(c.height!==H) c.height=H;
+  const x=c.getContext('2d',{willReadFrequently:true});
+  x.setTransform(1,0,0,1,0,0); x.clearRect(0,0,W,H); x.translate(W/2,H/2); x.rotate(r*Math.PI/180); if(S.mirror) x.scale(-1,1);
+  x.drawImage(video,-vw*sc/2,-vh*sc/2,vw*sc,vh*sc); x.setTransform(1,0,0,1,0,0);
+  return true;
+}
+const preview=$('#preview');
+function drawPreview(){
+  if(!stream||!drawOriented(preview,720)) return;
+  const x=preview.getContext('2d'), W=preview.width, H=preview.height;
+  const l=W*S.mL/100, r=W*(1-S.mR/100), t=H*S.mT/100, b=H*(1-S.mB/100);
+  x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(0,0,W,t); x.fillRect(0,b,W,H-b); x.fillRect(0,t,l,b-t); x.fillRect(r,t,W-r,b-t);
+  x.setLineDash([10,7]); x.lineWidth=3; x.strokeStyle='#f4c96b'; x.strokeRect(l,t,r-l,b-t); x.setLineDash([]);
+}
+
+/* ---------------- 이미지 처리 공통 ---------------- */
+function fitCanvas(src, max){
+  const w=src.width||src.naturalWidth, h=src.height||src.naturalHeight, sc=Math.min(1,max/Math.max(w,h));
+  const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w*sc)); c.height=Math.max(1,Math.round(h*sc));
+  const x=c.getContext('2d',{willReadFrequently:true}); x.imageSmoothingQuality='high'; x.drawImage(src,0,0,c.width,c.height);
+  return c;
+}
+function morph(m,w,h,erode){
+  const o=new Uint8Array(m.length);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const p=y*w+x;
+    if(erode) o[p]=(m[p]&&x>0&&m[p-1]&&x<w-1&&m[p+1]&&y>0&&m[p-w]&&y<h-1&&m[p+w])?1:0;
+    else o[p]=(m[p]||(x>0&&m[p-1])||(x<w-1&&m[p+1])||(y>0&&m[p-w])||(y<h-1&&m[p+w]))?1:0; }
+  return o;
+}
+function largestComp(m,w,h){
+  const n=w*h, lab=new Int32Array(n), st=new Int32Array(n); let id=0, best=0, bestSize=0;
+  for(let p0=0;p0<n;p0++){ if(!m[p0]||lab[p0]) continue; id++; let sp=0,size=0; st[sp++]=p0; lab[p0]=id;
+    while(sp){ const q=st[--sp]; size++; const qx=q%w, qy=(q-qx)/w;
+      if(qx>0&&m[q-1]&&!lab[q-1]){lab[q-1]=id;st[sp++]=q-1;} if(qx<w-1&&m[q+1]&&!lab[q+1]){lab[q+1]=id;st[sp++]=q+1;}
+      if(qy>0&&m[q-w]&&!lab[q-w]){lab[q-w]=id;st[sp++]=q-w;} if(qy<h-1&&m[q+w]&&!lab[q+w]){lab[q+w]=id;st[sp++]=q+w;} }
+    if(size>bestSize){bestSize=size;best=id;} }
+  const o=new Uint8Array(n); if(best) for(let p=0;p<n;p++) o[p]=lab[p]===best?1:0; return {mask:o,size:bestSize};
+}
+function fillHolesMask(m,w,h){
+  const n=w*h, reach=new Uint8Array(n), st=new Int32Array(n); let sp=0;
+  const push=p=>{ if(!m[p]&&!reach[p]){reach[p]=1;st[sp++]=p;} };
+  for(let x=0;x<w;x++){push(x);push((h-1)*w+x);} for(let y=0;y<h;y++){push(y*w);push(y*w+w-1);}
+  while(sp){ const q=st[--sp], qx=q%w, qy=(q-qx)/w; if(qx>0)push(q-1); if(qx<w-1)push(q+1); if(qy>0)push(q-w); if(qy<h-1)push(q+w); }
+  const filled=new Uint8Array(n); for(let p=0;p<n;p++) if(!m[p]&&!reach[p]) filled[p]=1;
+  return filled;
+}
+
+/* --- 방식 1: 종이 모양 그대로 (바닥과 종이를 구분) --- */
+function paperCut(src){
+  const w=src.width, h=src.height, n=w*h;
+  const d=src.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const ring=Math.max(2,Math.round(Math.min(w,h)*0.025));
+  const rs=[],gs=[],bs=[];
+  for(let y=0;y<h;y+=2) for(let x=0;x<w;x+=2){ if(x>=ring&&x<w-ring&&y>=ring&&y<h-ring) continue; const i=(y*w+x)*4; rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2]); }
+  const med=a=>{ const s=Float32Array.from(a).sort(); return s[s.length>>1]; };
+  const Dr=med(rs), Dg=med(gs), Db=med(bs);
+  const DL=0.299*Dr+0.587*Dg+0.114*Db, Dmx=Math.max(Dr,Dg,Db), Dmn=Math.min(Dr,Dg,Db), Dsat=Dmx>0?(Dmx-Dmn)/Dmx:0;
+  if(DL>165 && Dsat<0.2) return {paperFull:true};   // 흰 종이가 화면을 가득 채움
+  const bd=[]; for(let k=0;k<rs.length;k++){ const a=rs[k]-Dr,b=gs[k]-Dg,c=bs[k]-Db; bd.push(Math.sqrt(a*a+b*b+c*c)); }
+  bd.sort((a,b)=>a-b);
+  const T=Math.min(150,Math.max(45,(bd[Math.floor(bd.length*0.75)]||0)*1.5+30));
+  const dist=new Float32Array(n);
+  for(let p=0,i=0;p<n;p++,i+=4){ const a=d[i]-Dr,b=d[i+1]-Dg,c=d[i+2]-Db; dist[p]=Math.sqrt(a*a+b*b+c*c); }
+  const bg=new Uint8Array(n), st=new Int32Array(n); let sp=0;
+  const push=p=>{ if(!bg[p]&&dist[p]<T){bg[p]=1;st[sp++]=p;} };
+  for(let x=0;x<w;x++){push(x);push((h-1)*w+x);} for(let y=0;y<h;y++){push(y*w);push(y*w+w-1);}
+  while(sp){ const q=st[--sp], qx=q%w, qy=(q-qx)/w; if(qx>0)push(q-1); if(qx<w-1)push(q+1); if(qy>0)push(q-w); if(qy<h-1)push(q+w); }
+  let fg=new Uint8Array(n); for(let p=0;p<n;p++) fg[p]=bg[p]?0:1;
+  fg=morph(morph(fg,w,h,true),w,h,false);
+  const lc=largestComp(fg,w,h); fg=lc.mask;
+  if(lc.size<n*0.02) return null;
+  const holes=fillHolesMask(fg,w,h); for(let p=0;p<n;p++) if(holes[p]) fg[p]=1;
+  // 화이트밸런스: 종이의 밝은 부분을 흰색으로
+  const Ls=[]; for(let p=0;p<n;p+=3) if(fg[p]){ const i=p*4; Ls.push(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]); }
+  Ls.sort((a,b)=>a-b); const thrL=Ls[Math.floor(Ls.length*0.85)]||200;
+  let sr=0,sg=0,sb=0,m=0;
+  for(let p=0;p<n;p+=3) if(fg[p]){ const i=p*4; if(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]>=thrL){sr+=d[i];sg+=d[i+1];sb+=d[i+2];m++;} }
+  m=Math.max(1,m);
+  const Pr=sr/m, Pg=sg/m, Pb=sb/m, Pmx=Math.max(Pr,Pg,Pb), Psat=(Pmx-Math.min(Pr,Pg,Pb))/Math.max(1,Pmx);
+  let fr,fgc,fb;
+  if(Psat<0.18){ fr=Math.min(2.2,245/Math.max(40,Pr)); fgc=Math.min(2.2,245/Math.max(40,Pg)); fb=Math.min(2.2,245/Math.max(40,Pb)); } // 흰 종이: 흰색으로 맞춤
+  else { fr=fgc=fb=Math.min(1.7,240/Math.max(40,Pmx)); } // 색종이: 색은 살리고 밝기만
+  let minX=w,minY=h,maxX=-1,maxY=-1;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(fg[y*w+x]){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+  minX=Math.max(0,minX-2); minY=Math.max(0,minY-2); maxX=Math.min(w-1,maxX+2); maxY=Math.min(h-1,maxY+2);
+  const cw=maxX-minX+1, ch=maxY-minY+1, out=new Uint8ClampedArray(cw*ch*4), cm=new Uint8Array(cw*ch);
+  for(let y=0;y<ch;y++) for(let x=0;x<cw;x++){
+    const sx=x+minX, sy=y+minY, p=sy*w+sx, i=p*4, o=(y*cw+x)*4;
+    let s=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=sx+dx, yy=sy+dy; if(xx>=0&&yy>=0&&xx<w&&yy<h) s+=fg[yy*w+xx]; }
+    out[o]=d[i]*fr; out[o+1]=d[i+1]*fgc; out[o+2]=d[i+2]*fb; out[o+3]=Math.round(s/9*255);
+    cm[y*cw+x]=fg[p];
+  }
+  const c=document.createElement('canvas'); c.width=cw; c.height=ch; c.getContext('2d').putImageData(new ImageData(out,cw,ch),0,0);
+  return {canvas:c, mask:cm, w:cw, h:ch};
+}
+
+/* --- 방식 2: 흰 종이 위 그림만 오려내기 --- */
+function cutout(src){
+  const w=src.width, h=src.height, n=w*h;
+  const d=src.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const B=Math.max(8,Math.round(Math.max(w,h)/22)), gw=Math.ceil(w/B), gh=Math.ceil(h/B), gn=gw*gh;
+  let bR=new Float32Array(gn), bG=new Float32Array(gn), bB=new Float32Array(gn);
+  const bL=new Float32Array(gn), hist=new Uint32Array(256);
+  for(let by=0;by<gh;by++) for(let bx=0;bx<gw;bx++){
+    hist.fill(0); let cnt=0; const x0=bx*B, y0=by*B, x1=Math.min(w,x0+B), y1=Math.min(h,y0+B);
+    for(let y=y0;y<y1;y+=2) for(let x=x0;x<x1;x+=2){ const i=(y*w+x)*4; hist[(d[i]*77+d[i+1]*150+d[i+2]*29)>>8]++; cnt++; }
+    let target=Math.max(1,cnt*0.2), acc=0, thr=255; for(let v=255;v>=0;v--){ acc+=hist[v]; if(acc>=target){thr=v;break;} }
+    let sr=0,sg=0,sb=0,m=0;
+    for(let y=y0;y<y1;y+=2) for(let x=x0;x<x1;x+=2){ const i=(y*w+x)*4; if(((d[i]*77+d[i+1]*150+d[i+2]*29)>>8)>=thr){sr+=d[i];sg+=d[i+1];sb+=d[i+2];m++;} }
+    const g=by*gw+bx; m=Math.max(1,m); bR[g]=sr/m; bG[g]=sg/m; bB[g]=sb/m; bL[g]=0.299*bR[g]+0.587*bG[g]+0.114*bB[g];
+  }
+  const sorted=Array.from(bL).sort((a,b)=>a-b), ref=sorted[Math.floor((gn-1)*0.9)]||255;
+  let valid=new Uint8Array(gn); for(let g=0;g<gn;g++) valid[g]=bL[g]>=ref*0.72?1:0;
+  for(let pass=0;pass<200;pass++){
+    let changed=false; const nv=valid.slice();
+    for(let by=0;by<gh;by++) for(let bx=0;bx<gw;bx++){ const g=by*gw+bx; if(valid[g]) continue; let sr=0,sg=0,sb=0,m=0;
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=bx+dx,yy=by+dy; if(xx<0||yy<0||xx>=gw||yy>=gh) continue; const k=yy*gw+xx; if(valid[k]){sr+=bR[k];sg+=bG[k];sb+=bB[k];m++;} }
+      if(m){ bR[g]=sr/m; bG[g]=sg/m; bB[g]=sb/m; nv[g]=1; changed=true; } }
+    valid=nv; if(!changed) break;
+  }
+  for(let g=0;g<gn;g++) if(!valid[g]){ bR[g]=bG[g]=bB[g]=Math.max(ref,200); }
+  for(let pass=0;pass<2;pass++){
+    const nR=new Float32Array(gn), nG=new Float32Array(gn), nB=new Float32Array(gn);
+    for(let by=0;by<gh;by++) for(let bx=0;bx<gw;bx++){ let sr=0,sg=0,sb=0,m=0;
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=bx+dx,yy=by+dy; if(xx<0||yy<0||xx>=gw||yy>=gh) continue; const k=yy*gw+xx; sr+=bR[k];sg+=bG[k];sb+=bB[k];m++; }
+      const g=by*gw+bx; nR[g]=sr/m; nG[g]=sg/m; nB[g]=sb/m; }
+    bR=nR; bG=nG; bB=nB;
+  }
+  const out=new Uint8ClampedArray(n*4), a=new Float32Array(n), t=S.thr, soft=0.1;
+  for(let y=0;y<h;y++){
+    let fy=(y+0.5)/B-0.5, y0=Math.floor(fy), ty=fy-y0; if(y0<0){y0=0;ty=0;} let y1=Math.min(gh-1,y0+1); if(y0>=gh-1){y0=gh-1;y1=gh-1;ty=0;}
+    for(let x=0;x<w;x++){
+      let fx=(x+0.5)/B-0.5, x0=Math.floor(fx), tx=fx-x0; if(x0<0){x0=0;tx=0;} let x1=Math.min(gw-1,x0+1); if(x0>=gw-1){x0=gw-1;x1=gw-1;tx=0;}
+      const k00=y0*gw+x0,k01=y0*gw+x1,k10=y1*gw+x0,k11=y1*gw+x1, w00=(1-tx)*(1-ty),w01=tx*(1-ty),w10=(1-tx)*ty,w11=tx*ty;
+      const br=bR[k00]*w00+bR[k01]*w01+bR[k10]*w10+bR[k11]*w11, bgc=bG[k00]*w00+bG[k01]*w01+bG[k10]*w10+bG[k11]*w11, bb=bB[k00]*w00+bB[k01]*w01+bB[k10]*w10+bB[k11]*w11;
+      const p=y*w+x, i=p*4;
+      const r=Math.min(1,d[i]/Math.max(30,br)), g=Math.min(1,d[i+1]/Math.max(30,bgc)), b=Math.min(1,d[i+2]/Math.max(30,bb));
+      const L=0.299*r+0.587*g+0.114*b, mx=Math.max(r,g,b), mn=Math.min(r,g,b), sat=mx>0.08?(mx-mn)/mx:0;
+      a[p]=Math.min(1,Math.max(0,(Math.max(1-L,sat*0.85)-t)/soft));
+      out[i]=r*255; out[i+1]=g*255; out[i+2]=b*255;
+    }
+  }
+  const mask=new Uint8Array(n); for(let p=0;p<n;p++) mask[p]=a[p]>0.35?1:0;
+  const lab=new Uint8Array(n), stack=new Int32Array(n), list=new Int32Array(n);
+  const minSize=S.despeckle?Math.max(12,n*0.00006):0, perim=2*(w+h)-4;
+  for(let p0=0;p0<n;p0++){
+    if(!mask[p0]||lab[p0]) continue;
+    let sp=0, lp=0, touch=false, edgeCnt=0; stack[sp++]=p0; lab[p0]=1;
+    while(sp){ const q=stack[--sp]; list[lp++]=q; const qx=q%w, qy=(q-qx)/w;
+      if(qx===0||qy===0||qx===w-1||qy===h-1){ touch=true; edgeCnt++; }
+      if(qx>0&&mask[q-1]&&!lab[q-1]){lab[q-1]=1;stack[sp++]=q-1;} if(qx<w-1&&mask[q+1]&&!lab[q+1]){lab[q+1]=1;stack[sp++]=q+1;}
+      if(qy>0&&mask[q-w]&&!lab[q-w]){lab[q-w]=1;stack[sp++]=q-w;} if(qy<h-1&&mask[q+w]&&!lab[q+w]){lab[q+w]=1;stack[sp++]=q+w;} }
+    if(lp<minSize || edgeCnt>perim*0.18 || (S.edgeRemove&&touch)) for(let k=0;k<lp;k++) mask[list[k]]=0;
+  }
+  if(S.fillHoles){ const holes=fillHolesMask(mask,w,h); for(let p=0;p<n;p++) if(holes[p]){ mask[p]=1; a[p]=1; const i=p*4; out[i]=255; out[i+1]=253; out[i+2]=247; } }
+  let keep=mask; for(let it=0;it<2;it++) keep=morph(keep,w,h,false);
+  let minX=w,minY=h,maxX=-1,maxY=-1,solid=0;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const p=y*w+x, al=keep[p]?a[p]:0; out[p*4+3]=Math.round(al*255);
+    if(al>0.1){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; } if(al>0.5) solid++; }
+  if(maxX<0||solid<n*0.002) return null;
+  minX=Math.max(0,minX-4); minY=Math.max(0,minY-4); maxX=Math.min(w-1,maxX+4); maxY=Math.min(h-1,maxY+4);
+  const full=document.createElement('canvas'); full.width=w; full.height=h; full.getContext('2d').putImageData(new ImageData(out,w,h),0,0);
+  const cw=maxX-minX+1, ch=maxY-minY+1, c=document.createElement('canvas'); c.width=cw; c.height=ch;
+  c.getContext('2d').drawImage(full,minX,minY,cw,ch,0,0,cw,ch);
+  const cm=new Uint8Array(cw*ch); for(let y=0;y<ch;y++) for(let x=0;x<cw;x++) cm[y*cw+x]=out[((y+minY)*w+x+minX)*4+3]>127?1:0;
+  return {canvas:c, mask:cm, w:cw, h:ch};
+}
+
+function stickerize(src){
+  const r=Math.round(Math.max(src.width,src.height)*0.016)+4, pad=r+3;
+  const sil=document.createElement('canvas'); sil.width=src.width; sil.height=src.height;
+  const sx=sil.getContext('2d'); sx.drawImage(src,0,0); sx.globalCompositeOperation='source-in'; sx.fillStyle='#fffdf6'; sx.fillRect(0,0,sil.width,sil.height);
+  const c=document.createElement('canvas'); c.width=src.width+pad*2; c.height=src.height+pad*2;
+  const x=c.getContext('2d'); for(let k=0;k<20;k++){ const an=k/20*Math.PI*2; x.drawImage(sil,pad+Math.cos(an)*r,pad+Math.sin(an)*r); }
+  x.drawImage(sil,pad,pad); x.drawImage(src,pad,pad); return c;
+}
+
+/* ---------------- 모양 인식 ---------------- */
+function rotMask(m,w,h){ // 시계 방향 90°
+  const o=new Uint8Array(m.length), nw=h; for(let y=0;y<h;y++) for(let x=0;x<w;x++) o[x*nw+(h-1-y)]=m[y*w+x]; return {m:o,w:h,h:w};
+}
+function rotCanvas(c,k){
+  for(let i=0;i<k;i++){ const o=document.createElement('canvas'); o.width=c.height; o.height=c.width; const x=o.getContext('2d'); x.translate(o.width,0); x.rotate(Math.PI/2); x.drawImage(c,0,0); c=o; }
+  return c;
+}
+function hullArea(pts){
+  pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];
+  for(const p of pts){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0) lo.pop(); lo.push(p); }
+  for(let i=pts.length-1;i>=0;i--){ const p=pts[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0) up.pop(); up.push(p); }
+  const hl=lo.slice(0,-1).concat(up.slice(0,-1)); let s=0;
+  for(let i=0;i<hl.length;i++){ const a=hl[i], b=hl[(i+1)%hl.length]; s+=a[0]*b[1]-b[0]*a[1]; }
+  return Math.abs(s)/2;
+}
+function shapeFeat(m,W,H){
+  const ws=new Float32Array(H), seg=new Uint8Array(H), cen=new Float32Array(H); let top=-1,bot=-1;
+  for(let y=0;y<H;y++){ let l=-1,r=-1,s=0,prev=0,sx=0,cn=0;
+    for(let x=0;x<W;x++){ const v=m[y*W+x]; if(v&&!prev) s++; if(v){ if(l<0) l=x; r=x; sx+=x; cn++; } prev=v; }
+    ws[y]=l<0?0:r-l+1; seg[y]=s; cen[y]=cn?sx/cn:0; if(ws[y]>0){ if(top<0) top=y; bot=y; } }
+  if(top<0) return null;
+  const Hh=bot-top+1;
+  const sw=k=>{ let s=0,c=0; for(let y=Math.max(top,k-2);y<=Math.min(bot,k+2);y++){s+=ws[y];c++;} return s/c; };
+  let maxW=1; for(let y=top;y<=bot;y++) maxW=Math.max(maxW,sw(y));
+  const at=f=>sw(top+Math.min(Hh-1,Math.round(f*(Hh-1))))/maxW;
+  let maxPos=0,mv=-1; for(let i=0;i<=40;i++){ const v=at(i/40); if(v>mv+0.02){mv=v;maxPos=i/40;} }
+  let nr=0,nn=0; for(let y=top+Math.round(Hh*0.03); y<=top+Math.round(Hh*0.15); y++){ nr++; if(seg[y]>=2) nn++; }
+  let br=0,bn=0; for(let y=top+Math.round(Hh*0.85); y<=top+Math.round(Hh*0.97); y++){ br++; if(seg[y]>=2) bn++; }
+  // 좌우 대칭 정도 (줄마다 가운데 위치가 얼마나 흔들리는지)
+  let cs=0,cw=0; for(let y=top;y<=bot;y++){ cs+=cen[y]*ws[y]; cw+=ws[y]; } const mc=cs/Math.max(1,cw);
+  let dev=0,dn=0; for(let y=top+Math.round(Hh*0.1); y<=top+Math.round(Hh*0.9); y++){ if(ws[y]>0){ dev+=Math.abs(cen[y]-mc); dn++; } }
+  let lowMax=0; for(let i=20;i<=38;i++) lowMax=Math.max(lowMax,at(i/40));
+  return {at, maxPos, notch:nr?nn/nr:0, botNotch:br?bn/br:0, aspect:Hh/maxW, sym:dn?dev/dn/maxW:1, lowMax};
+}
+function classify(mask,w,h){
+  let area=0,sx=0,sy=0; const pts=[];
+  for(let y=0;y<h;y++){ let l=-1,r=-1; for(let x=0;x<w;x++) if(mask[y*w+x]){ area++; sx+=x; sy+=y; if(l<0) l=x; r=x; }
+    if(l>=0){ pts.push([l,y],[r+1,y],[l,y+1],[r+1,y+1]); } }
+  if(area<80) return {kind:'card',rot:0};
+  const cx=sx/area, cy=sy/area, solidity=area/Math.max(1,hullArea(pts));
+  let bw=0,bh=0,minX=w,maxX=0,minY=h,maxY=0;
+  for(const p of pts){ if(p[0]<minX)minX=p[0]; if(p[0]>maxX)maxX=p[0]; if(p[1]<minY)minY=p[1]; if(p[1]>maxY)maxY=p[1]; }
+  bw=maxX-minX; bh=maxY-minY; const extent=area/Math.max(1,bw*bh);
+  // 중심에서 바깥까지 거리(방사 프로필)
+  const NA=96, R=new Float32Array(NA), maxR=Math.hypot(w,h);
+  for(let k=0;k<NA;k++){ const an=k/NA*Math.PI*2, dx=Math.cos(an), dy=Math.sin(an); let last=0;
+    for(let r=0;r<maxR;r+=1){ const x=Math.round(cx+dx*r), y=Math.round(cy+dy*r); if(x<0||y<0||x>=w||y>=h) break; if(mask[y*w+x]) last=r; }
+    R[k]=last; }
+  let Rs=R; for(let pass=0;pass<2;pass++){ const o=new Float32Array(NA); for(let k=0;k<NA;k++) o[k]=(Rs[(k-1+NA)%NA]+2*Rs[k]+Rs[(k+1)%NA])/4; Rs=o; }
+  let rmax=0,rmin=1e9; for(const v of Rs){ if(v>rmax)rmax=v; if(v<rmin)rmin=v; }
+  const peaks=[];
+  for(let k=0;k<NA;k++){ const v=Rs[k]; if(v<rmin+0.4*(rmax-rmin)) continue; let ok=true;
+    for(let j=1;j<=4;j++){ if(Rs[(k+j)%NA]>v||Rs[(k-j+NA)%NA]>v){ok=false;break;} }
+    if(ok&&!peaks.some(p=>Math.min(Math.abs(p-k),NA-Math.abs(p-k))<6)) peaks.push(k); }
+  const ratio=rmin/Math.max(1,rmax);
+  if(peaks.length>=5&&peaks.length<=8&&ratio<0.62&&solidity<0.82) return {kind:'star',rot:0};
+  if(extent>0.86&&solidity>0.94) return {kind:'card',rot:0};
+  if(ratio>0.78&&solidity>0.92) return {kind:'circle',rot:0};
+  // 하트·트리는 네 방향으로 돌려 보며 확인
+  let cur={m:mask,w,h};
+  for(let k=0;k<4;k++){
+    const f=shapeFeat(cur.m,cur.w,cur.h);
+    if(f){
+      const heart = f.sym<0.06 && f.notch>0.4 && f.maxPos>=0.12 && f.maxPos<=0.55 && f.at(0.92)<0.45 && f.at(0.2)>0.55 && f.aspect>0.65 && f.aspect<1.5;
+      if(heart) return {kind:'heart',rot:k};
+      const tree = f.sym<0.06 && f.notch<0.25 && f.botNotch<0.3 && f.at(0.06)<0.35 && f.maxPos>=0.45 && f.aspect>0.9 && f.aspect<2.8 && f.at(0.3)<f.lowMax*0.85 && solidity<0.97;
+      if(tree) return {kind:'tree',rot:k};
+    }
+    cur=rotMask(cur.m,cur.w,cur.h);
+  }
+  return {kind:'card',rot:0};
+}
+
+/* ---------------- 그림 추가 ---------------- */
+let drawings=[]; // {id,name,dataURL,created,kind,img}
+let chain=Promise.resolve(), pending=0;
+function enqueue(fn){ pending++; chain=chain.then(fn).catch(e=>console.error(e)).finally(()=>{pending--; updateFolderStatus(); try{updateCloudStatus();}catch(e){}}); return chain; }
+function loadImg(url){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; }); }
+
+function processCanvas(src){
+  const work=fitCanvas(src,900);
+  let res=null, drawMode=S.mode==='draw', note='';
+  if(!drawMode){ res=paperCut(work); if(res&&res.paperFull){ drawMode=true; res=null; note='흰 종이가 화면을 가득 채워서 그림만 오려냈어요.'; } }
+  if(drawMode) res=cutout(work);
+  if(!res) return null;
+  let kind=S.forceKind==='auto'?classify(res.mask,res.w,res.h):{kind:S.forceKind,rot:0};
+  let c=res.canvas; if(kind.rot) c=rotCanvas(c,kind.rot);
+  c=fitCanvas(c,520);
+  if(drawMode&&S.sticker) c=stickerize(c);
+  return {canvas:c, kind:kind.kind, note};
+}
+async function addFromCanvas(src, name){
+  const r=processCanvas(src);
+  if(!r){ toast(S.mode==='paper'?'종이를 찾지 못했어요. 어두운 바닥 위에서 종이 전체가 보이게 찍어 주세요.':'그림을 찾지 못했어요. ‘배경 지우기 강도’를 낮춰 보세요.',4000); return false; }
+  const url=r.canvas.toDataURL('image/png');
+  const rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7), name:(name||'').trim(), dataURL:url, created:Date.now(), kind:r.kind};
+  rec.img=await loadImg(url);
+  drawings.push(rec); await dbPut(toRec(rec));
+  sceneAdd(rec,true);
+  $('#result').innerHTML=''; const im=new Image(); im.src=url; $('#result').appendChild(im);
+  $('#resultInfo').innerHTML=`<b>${KIND[r.kind].icon} ${KIND[r.kind].name}</b>(으)로 인식 — ${KIND[r.kind].act}${r.note?'<br><span class="hint">'+r.note+'</span>':''}`;
+  renderGallery();
+  return true;
+}
+async function fileToCanvas(f){
+  const url=URL.createObjectURL(f);
+  try{ const im=await loadImg(url); return fitCanvas(im,1600); } finally { URL.revokeObjectURL(url); }
+}
+
+async function capture(){
+  ensureAudio();
+  if(!stream||!video.videoWidth){ toast('카메라가 꺼져 있어요. 카메라를 쓰려면 ‘카메라 켜기’를 눌러 주세요.'); return; }
+  const f=$('#flash'); f.style.transition='none'; f.style.opacity='0.85'; requestAnimationFrame(()=>{ f.style.transition='opacity .4s'; f.style.opacity='0'; });
+  const full=document.createElement('canvas'); drawOriented(full,1600);
+  const W=full.width, H=full.height;
+  const l=Math.round(W*S.mL/100), r=Math.round(W*(1-S.mR/100)), t=Math.round(H*S.mT/100), b=Math.round(H*(1-S.mB/100));
+  if(r-l<20||b-t<20){ toast('여백이 너무 커요. 여백을 줄여 주세요.'); return; }
+  const crop=document.createElement('canvas'); crop.width=r-l; crop.height=b-t;
+  crop.getContext('2d',{willReadFrequently:true}).drawImage(full,l,t,r-l,b-t,0,0,r-l,b-t);
+  const name=$('#nameIn').value; $('#nameIn').value='';
+  enqueue(()=>addFromCanvas(crop,name));
+}
+$('#btnCapture').addEventListener('click',capture);
+
+$('#fileIn').addEventListener('change',e=>{
+  ensureAudio();
+  const files=[...e.target.files]; e.target.value='';
+  const nm=files.length===1?$('#nameIn').value:''; $('#nameIn').value='';
+  for(const f of files) enqueue(async()=>{ try{ await addFromCanvas(await fileToCanvas(f), nm); }catch(err){ toast('사진을 열지 못했어요: '+f.name); } });
+});
+
+async function removeDrawing(id){
+  drawings=drawings.filter(d=>d.id!==id); scene.items=scene.items.filter(it=>it.id!==id);
+  await dbDel(id); renderGallery();
+}
+$('#btnUndo').addEventListener('click',async()=>{
+  if(!drawings.length) return toast('지울 그림이 없어요.');
+  const last=drawings.reduce((a,b)=>a.created>b.created?a:b);
+  if(await confirmBox('방금 추가한 그림'+(last.name?' ('+last.name+')':'')+'을 지울까요?','지우기')){ await removeDrawing(last.id); toast('지웠어요.'); }
+});
+async function setKind(d, kind){
+  d.kind=kind; await dbPut(toRec(d));
+  const it=scene.items.find(i=>i.id===d.id); if(it){ it.kind=kind; pickHome(it); }
+  renderGallery(); toast(KIND[kind].icon+' '+KIND[kind].name+'(으)로 바꿨어요 — '+KIND[kind].act);
+}
+async function setName(d){
+  const v=await promptBox('화면에 표시할 이름을 넣어 주세요.', d.name);
+  if(v===null) return; d.name=v.trim(); await dbPut(toRec(d));
+  const it=scene.items.find(i=>i.id===d.id); if(it) it.name=d.name; renderGallery();
+}
+function renderGallery(){
+  const g=$('#gallery'); g.innerHTML='';
+  const list=[...drawings].sort((a,b)=>b.created-a.created);
+  if(!list.length) g.innerHTML='<div class="empty">아직 도착한 그림이 없어요.</div>';
+  list.forEach(d=>{
+    const el=document.createElement('div'); el.className='thumb checker'; el.title='클릭하면 전시 화면 가운데에 다시 보여 줍니다';
+    const im=new Image(); im.src=d.dataURL; el.appendChild(im);
+    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=d.name||'＋ 이름'; nm.title='이름 넣기';
+    nm.addEventListener('click',ev=>{ ev.stopPropagation(); setName(d); }); el.appendChild(nm);
+    const kd=document.createElement('button'); kd.className='kd'; kd.textContent=KIND[d.kind||'card'].icon; kd.title=KIND[d.kind||'card'].name+' — 눌러서 모양 바꾸기';
+    kd.addEventListener('click',ev=>{ ev.stopPropagation(); const i=KIND_ORDER.indexOf(d.kind||'card'); setKind(d, KIND_ORDER[(i+1)%KIND_ORDER.length]); }); el.appendChild(kd);
+    const x=document.createElement('button'); x.className='x'; x.textContent='✕'; x.title='지우기';
+    x.addEventListener('click',async ev=>{ ev.stopPropagation(); if(await confirmBox('이 그림'+(d.name?' ('+d.name+')':'')+'을 전시에서 지울까요?','지우기')) removeDrawing(d.id); });
+    el.appendChild(x);
+    el.addEventListener('click',()=>spotlight(d.id));
+    g.appendChild(el);
+  });
+  const cnt={}; drawings.forEach(d=>{ const k=d.kind||'card'; cnt[k]=(cnt[k]||0)+1; });
+  const parts=KIND_ORDER.filter(k=>cnt[k]).map(k=>KIND[k].icon+cnt[k]);
+  $('#galCount').textContent='· '+drawings.length+'장'+(parts.length?' ('+parts.join(' ')+')':'');
+  $('#hdrCount').textContent='· 그림 '+drawings.length+'장';
+}
+
+/* 백업 */
+$('#btnExport').addEventListener('click',()=>{
+  const data={app:'xmas-star-gallery',version:2,exported:new Date().toISOString(),settings:S,drawings:drawings.map(toRec)};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'}), a=document.createElement('a'), dt=new Date(), z=v=>String(v).padStart(2,'0');
+  a.download=`성탄그림전시_백업_${dt.getFullYear()}${z(dt.getMonth()+1)}${z(dt.getDate())}_${z(dt.getHours())}${z(dt.getMinutes())}.json`;
+  a.href=URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast('백업 파일을 저장했어요 ('+drawings.length+'장)');
+});
+$('#importIn').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    const data=JSON.parse(await f.text()); if(!data||!Array.isArray(data.drawings)) throw 0;
+    let added=0;
+    for(const r of data.drawings){
+      if(!r.id||!r.dataURL||drawings.some(d=>d.id===r.id)) continue;
+      const rec={id:r.id,name:r.name||'',dataURL:r.dataURL,created:r.created||Date.now(),kind:KIND[r.kind]?r.kind:'card'};
+      rec.img=await loadImg(rec.dataURL); drawings.push(rec); await dbPut(toRec(rec)); sceneAdd(rec,false); added++;
+    }
+    renderGallery(); toast('그림 '+added+'장을 불러왔어요.');
+  }catch(err){ toast('백업 파일을 읽지 못했어요.'); }
+});
+$('#btnClear').addEventListener('click',async()=>{
+  if(!drawings.length) return;
+  if(!await confirmBox('그림 '+drawings.length+'장을 모두 지울까요? 되돌릴 수 없으니 먼저 ‘백업 내보내기’를 해 두세요.','모두 지우기')) return;
+  drawings=[]; scene.items=[]; await dbClear(); renderGallery(); toast('모두 지웠어요.');
+});
+
+/* ---------------- 폴더 자동 가져오기 ---------------- */
+let dirHandle=null, watching=false, lastScan=0, scanning=false, lastScanTime=null, importedCount=0, folderErr='', heicWarned=false;
+let seen=new Set(); try{ seen=new Set(JSON.parse(localStorage.getItem('xmasSeen')||'[]')); }catch(e){}
+function saveSeen(){ try{ const arr=[...seen]; localStorage.setItem('xmasSeen',JSON.stringify(arr.slice(-4000))); }catch(e){} }
+const IMG_RE=/\.(jpe?g|png|webp|gif|bmp)$/i, HEIC_RE=/\.hei[cf]$/i;
+const fkey=(name,f)=>name+'|'+f.size+'|'+f.lastModified;
+function updateFolderStatus(){
+  const el=$('#folderStatus');
+  $('#btnFolderStop').hidden=!dirHandle; $('#btnFolderStop').textContent=watching?'⏸ 멈추기':'▶ 다시 감시';
+  if(!dirHandle){ return; }
+  const tm=lastScanTime?lastScanTime.toLocaleTimeString('ko-KR'):'-';
+  el.innerHTML = folderErr ? `<span class="warn">📁 <b style="color:#ffb98a">${dirHandle.name}</b> — ${folderErr}</span>`
+    : `📁 <b>${dirHandle.name}</b> ${watching?'<b>· 지켜보는 중</b> (2초마다 새 사진 확인)':'· 멈춤'}<br>마지막 확인 ${tm} · 이번에 가져온 사진 ${importedCount}장${pending?` · 처리 중 ${pending}장`:''}`;
+}
+async function connectFolder(){
+  if(!window.showDirectoryPicker){ toast('이 브라우저는 폴더 자동 가져오기를 지원하지 않아요. 최신 크롬이나 엣지로 열어 주세요.',4500); return; }
+  ensureAudio();
+  let h; try{ h=await window.showDirectoryPicker({id:'xmasPhotos',mode:'read'}); }catch(e){ return; }
+  dirHandle=h; folderErr=''; await metaPut('dir',h);
+  if(!$('#importExisting').checked){
+    let c=0; try{ for await (const [name,fh] of h.entries()){ if(fh.kind!=='file'||!IMG_RE.test(name)) continue; const f=await fh.getFile(); seen.add(fkey(name,f)); c++; } }catch(e){}
+    saveSeen(); if(c) toast(`폴더에 있던 사진 ${c}장은 건너뛰고, 지금부터 들어오는 사진만 가져옵니다.`,4000);
+  }
+  watching=true; $('#btnResume').hidden=true; lastScan=0; updateFolderStatus();
+}
+$('#btnFolder').addEventListener('click',connectFolder);
+$('#btnFolderStop').addEventListener('click',()=>{ watching=!watching; folderErr=''; updateFolderStatus(); });
+$('#btnResume').addEventListener('click',async()=>{
+  if(!dirHandle) return; ensureAudio();
+  try{ const p=await dirHandle.requestPermission({mode:'read'}); if(p==='granted'){ watching=true; folderErr=''; $('#btnResume').hidden=true; lastScan=0; } }catch(e){}
+  updateFolderStatus();
+});
+async function scanFolder(){
+  if(!dirHandle||!watching||scanning) return; scanning=true;
+  try{
+    const found=[];
+    for await (const [name,fh] of dirHandle.entries()){
+      if(fh.kind!=='file') continue;
+      if(HEIC_RE.test(name)){ if(!heicWarned){ heicWarned=true; toast('아이폰 HEIC 사진은 열 수 없어요. 아이폰 설정 → 카메라 → 포맷 → ‘높은 호환성’으로 바꿔 주세요.',6000);} continue; }
+      if(!IMG_RE.test(name)) continue;
+      const f=await fh.getFile(); const k=fkey(name,f); if(seen.has(k)) continue;
+      if(f.size===0 || Date.now()-f.lastModified<1500) continue; // 아직 저장 중
+      found.push({f,k});
+    }
+    found.sort((a,b)=>a.f.lastModified-b.f.lastModified);
+    for(const {f,k} of found){
+      seen.add(k); saveSeen(); importedCount++;
+      enqueue(async()=>{ try{ await addFromCanvas(await fileToCanvas(f),''); }catch(err){ toast('사진을 열지 못했어요: '+f.name); } });
+    }
+    folderErr=''; lastScanTime=new Date();
+  }catch(e){
+    folderErr='폴더에 접근할 수 없어요. ‘폴더 다시 연결’을 눌러 주세요.'; watching=false; $('#btnResume').hidden=false;
+  }
+  scanning=false; updateFolderStatus();
+}
+
+/* ---------------- QR로 바로 보내기 (Firebase) ---------------- */
+const RULES=`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{room}/photos/{photo} {
+      allow create: if request.resource.data.keys().hasOnly(['img','name','created'])
+                    && request.resource.data.img is string
+                    && request.resource.data.img.size() < 1000000;
+      allow read, delete: if true;
+    }
+  }
+}`;
+const cloud={db:null, unsub:null, ok:false, err:'', received:0, url:''};
+let qrCanvas=null;
+let seenCloud=new Set(); try{ seenCloud=new Set(JSON.parse(localStorage.getItem('xmasSeenCloud')||'[]')); }catch(e){}
+function saveSeenCloud(){ try{ localStorage.setItem('xmasSeenCloud',JSON.stringify([...seenCloud].slice(-3000))); }catch(e){} }
+function parseCfg(txt){
+  const k=(String(txt||'').match(/apiKey["']?\s*:\s*["']([^"']+)["']/)||[])[1];
+  const p=(String(txt||'').match(/projectId["']?\s*:\s*["']([^"']+)["']/)||[])[1];
+  return k&&p?{apiKey:k,projectId:p}:null;
+}
+function phoneUrl(){
+  const cfg=parseCfg(S.fbCfg), base=(S.baseUrl||'').trim();
+  if(!cfg||!/^https?:\/\//.test(base)) return '';
+  return base.split('#')[0].split('?')[0]+'?send=1&r='+S.room+'&p='+encodeURIComponent(cfg.projectId)+'&k='+encodeURIComponent(cfg.apiKey);
+}
+function updateCloudStatus(){
+  const el=$('#cloudStatus');
+  if(cloud.err){ el.innerHTML='<span class="warn">⚠ '+cloud.err+'</span>'; return; }
+  if(!cloud.db){ el.textContent='아직 연결하지 않았습니다.'; return; }
+  el.innerHTML = cloud.ok ? `<b>● 연결됨 · 휴대폰 사진을 기다리는 중</b><br>QR 코드 ${S.room} · 받은 사진 ${cloud.received}장${pending?` · 처리 중 ${pending}장`:''}` : '연결하는 중…';
+}
+async function makeQR(url){
+  const box=$('#qrBox'); box.innerHTML='';
+  try{ if(!window.QRCode) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'); }
+  catch(e){ box.innerHTML='<span>QR을 만들지 못했어요.<br>인터넷 연결을 확인해 주세요.</span>'; qrCanvas=null; return; }
+  new QRCode(box,{text:url,width:420,height:420,correctLevel:QRCode.CorrectLevel.M});
+  qrCanvas=box.querySelector('canvas');
+}
+async function cloudConnect(silent){
+  cloud.err='';
+  const cfg=parseCfg(S.fbCfg);
+  if(!cfg){ cloud.err='Firebase 설정을 붙여 넣어 주세요. apiKey와 projectId가 들어 있어야 해요.'; updateCloudStatus(); return; }
+  const url=phoneUrl();
+  if(!url){ cloud.err='휴대폰이 접속할 인터넷 주소(https://…)를 넣어 주세요. 아래 ‘처음 한 번 준비하기’의 B를 참고하세요.'; updateCloudStatus(); return; }
+  try{ await loadFirebase(); }catch(e){ cloud.err='Firebase를 불러오지 못했어요. 노트북이 인터넷에 연결되어 있는지 확인해 주세요.'; updateCloudStatus(); return; }
+  if(cloud.unsub){ try{ cloud.unsub(); }catch(e){} }
+  try{ cloud.db=fbDb(cfg.apiKey,cfg.projectId); }catch(e){ cloud.err='Firebase 설정이 올바르지 않아요: '+e.message; updateCloudStatus(); return; }
+  cloud.ok=false; cloud.url=url;
+  const col=cloud.db.collection('rooms').doc(S.room).collection('photos');
+  cloud.unsub=col.onSnapshot(snap=>{
+    cloud.ok=true; cloud.err='';
+    snap.docChanges().forEach(ch=>{
+      if(ch.type!=='added') return;
+      const id=ch.doc.id;
+      if(seenCloud.has(id)){ col.doc(id).delete().catch(()=>{}); return; }
+      seenCloud.add(id); saveSeenCloud(); cloud.received++;
+      const data=ch.doc.data();
+      enqueue(async()=>{
+        try{ const im=await loadImg(data.img); await addFromCanvas(fitCanvas(im,1600), data.name||''); }
+        catch(e){ toast('받은 사진을 열지 못했어요.'); }
+        col.doc(id).delete().catch(()=>{});
+      });
+    });
+    updateCloudStatus();
+  }, err=>{
+    cloud.ok=false;
+    cloud.err = err && err.code==='permission-denied' ? 'Firestore 규칙이 막고 있어요. ‘규칙 복사’로 규칙을 다시 붙여 넣고 게시해 주세요.'
+      : '연결이 끊겼어요 ('+(err&&err.message||'알 수 없는 오류')+'). 인터넷을 확인하고 ‘연결하고 QR 만들기’를 다시 눌러 주세요.';
+    updateCloudStatus();
+  });
+  S.cloudOn=true; saveS();
+  await makeQR(url); updateCloudStatus();
+  if(!silent) toast('연결됐어요! 휴대폰으로 QR을 찍어 보세요.');
+}
+$('#btnCloud').addEventListener('click',()=>{ ensureAudio(); cloudConnect(false); });
+$('#btnNewRoom').addEventListener('click',async()=>{
+  if(!await confirmBox('새 QR을 만들까요? 지금 QR로는 더 이상 보낼 수 없게 됩니다.','새 QR 만들기')) return;
+  S.room=Math.random().toString(36).slice(2,8); saveS(); if(cloud.db||S.cloudOn) cloudConnect(true); else updateCloudStatus();
+});
+$('#btnCopyLink').addEventListener('click',async()=>{
+  const u=phoneUrl(); if(!u) return toast('먼저 Firebase 설정과 인터넷 주소를 넣어 주세요.');
+  try{ await navigator.clipboard.writeText(u); toast('보내기 링크를 복사했어요. 단톡방에 올려도 됩니다.'); }catch(e){ toast(u,6000); }
+});
+$('#btnCopyRules').addEventListener('click',async()=>{
+  try{ await navigator.clipboard.writeText(RULES); toast('규칙을 복사했어요. Firestore ‘규칙’ 탭에 붙여 넣고 게시하세요.'); }
+  catch(e){ await promptBox('아래 내용을 복사해 쓰세요.', RULES); }
+});
+
+/* ---------------- 효과음 ---------------- */
+let actx=null;
+function ensureAudio(){ try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){} }
+function chime(kind){
+  if(!S.sound||!actx) return;
+  const sets={star:[1318.5,1568,2093,2637],heart:[784,988,1175,1568],tree:[1046.5,1318.5,1568,2093],circle:[880,1108.7,1318.5,1760],card:[1046.5,1318.5,1568,2093]};
+  try{ const t0=actx.currentTime;
+    (sets[kind]||sets.card).forEach((f,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type='sine'; o.frequency.value=f;
+      const st=t0+i*0.09; g.gain.setValueAtTime(0.0001,st); g.gain.linearRampToValueAtTime(0.14,st+0.02); g.gain.exponentialRampToValueAtTime(0.0001,st+1.3);
+      o.connect(g); g.connect(actx.destination); o.start(st); o.stop(st+1.4); });
+  }catch(e){}
+}
+
+/* ---------------- 전시 장면 ---------------- */
+const INTRO_HOLD=3.4;
+const now=()=>performance.now()/1000;
+const scene={items:[],particles:[],gather:false,g:0,lastIntro:-99,A:16/9,layoutKey:'',layout:null,bandKey:'',band:null};
+const STARS=[]; for(let i=0;i<260;i++) STARS.push({x:Math.random(),y:Math.pow(Math.random(),1.3)*0.82,r:0.4+Math.random()*1.3,ph:Math.random()*6.28,sp:0.6+Math.random()*2});
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const HILL=[[0,0.84,0.22,0.77,0.45,0.86],[0.45,0.86,0.7,0.93,1,0.8]];
+const GROUND_PTS=[]; for(const s of HILL) for(let i=0;i<=60;i++){ const t=i/60; GROUND_PTS.push([(1-t)**2*s[0]+2*(1-t)*t*s[2]+t*t*s[4],(1-t)**2*s[1]+2*(1-t)*t*s[3]+t*t*s[5]]); }
+function ground(x){ let b=GROUND_PTS[0]; for(const p of GROUND_PTS) if(Math.abs(p[0]-x)<Math.abs(b[0]-x)) b=p; return b[1]; }
+const floatSize=N=>clamp(0.21/Math.sqrt(Math.max(1,N/7)),0.065,0.21);
+const treeSize=N=>clamp(0.26/Math.sqrt(Math.max(1,N/5)),0.085,0.26);
+const REG={star:[0.05,0.95,0.07,0.4], heart:[0.08,0.92,0.3,0.66], card:[0.08,0.92,0.17,0.66], circle:[0.06,0.94,0,0.74]};
+
+function pickHome(it){
+  let best=null,bestD=-1; const A=scene.A, isTree=it.kind==='tree';
+  for(let k=0;k<30;k++){
+    let c;
+    if(isTree){ let x; do{ x=rnd(0.04,0.96); }while(Math.abs(x-0.5)<0.15); c={x,y:0}; }
+    else { const r=REG[it.kind]||REG.card; c={x:rnd(r[0],r[1]),y:rnd(r[2],r[3])}; }
+    let md=9;
+    for(const o of scene.items){ if(o===it||(o.kind==='tree')!==isTree) continue; const dx=(o.hx-c.x)*A, dy=isTree?0:(o.hy-c.y); md=Math.min(md,dx*dx+dy*dy); }
+    if(md>bestD){bestD=md;best=c;}
+  }
+  it.hx=best.x; it.hy=best.y;
+}
+function sceneAdd(rec,intro){
+  const iw=rec.img.naturalWidth, ih=rec.img.naturalHeight;
+  const it={id:rec.id,name:rec.name,img:rec.img,kind:rec.kind||'card',hRatio:ih/Math.max(iw,ih),sv:rnd(0.85,1.15),
+    ax:rnd(0.02,0.05),ay:rnd(0.015,0.035),fx:rnd(0.10,0.24),fy:rnd(0.12,0.28),px:rnd(0,6.28),py:rnd(0,6.28),rp:rnd(0,6.28),
+    spin:(Math.random()<0.5?-1:1)*rnd(0.12,0.3), vs:rnd(0.012,0.022), pulse:0,
+    lights:Array.from({length:8},()=>{ const v=rnd(0.2,0.88); return {v,u:rnd(-1,1)*0.33*v,ph:rnd(0,6.28),c:['255,90,90','255,215,90','120,200,255','255,255,255','255,140,220'][Math.floor(Math.random()*5)]}; }),
+    cx:0.5,cy:0.45,cs:0,rot:0,a:0,introStart:-99,burst:true};
+  pickHome(it);
+  if(intro){ const t=now(); it.introStart=Math.max(t+0.15,scene.lastIntro+2.4); scene.lastIntro=it.introStart; it.burst=false; }
+  else { it.cs=0.0001; it.cx=it.hx; it.cy=it.hy; it.a=0; it.introStart=-99; it.fresh=true; }
+  scene.items.push(it);
+}
+function spotlight(id){
+  const it=scene.items.find(i=>i.id===id); if(!it) return;
+  ensureAudio(); const t=now(); it.introStart=Math.max(t+0.05,scene.lastIntro+2.4); scene.lastIntro=it.introStart; it.burst=false;
+}
+function gatherLayout(N,A){
+  const key=N+'|'+A.toFixed(2); if(scene.layoutKey===key) return scene.layout;
+  const span=Math.PI*0.92, start=-Math.PI/2-span/2; let gs=0.15, rings=[];
+  for(;gs>0.03;gs-=0.004){ rings=[]; let ry=0.24+gs*0.5,total=0;
+    while(ry<=0.6-gs*0.5){ const rx=Math.min(ry*1.85,0.47*A-gs*0.5), cap=Math.floor(span*(rx+ry)/2/(gs*1.06)); if(cap>0){rings.push({rx,ry,cap});total+=cap;} ry+=gs*1.04; }
+    if(total>=N) break; }
+  const pos=[]; let left=N;
+  for(const r of rings){ if(left<=0) break; const m=Math.min(r.cap,left);
+    for(let j=0;j<m;j++){ const an=start+span*(j+0.5)/m; pos.push({x:0.5+r.rx*Math.cos(an)/A,y:0.95+r.ry*Math.sin(an),s:gs}); } left-=m; }
+  while(pos.length<N) pos.push({x:rnd(0.1,0.9),y:rnd(0.4,0.7),s:gs});
+  scene.layout={pos}; scene.layoutKey=key; return scene.layout;
+}
+function starBand(N,A){
+  const key=N+'|'+A.toFixed(2); if(scene.bandKey===key) return scene.band;
+  let sb=0.075, perSide=1, rows=1;
+  for(;sb>0.028;sb-=0.003){ perSide=Math.max(1,Math.floor((0.47*A-0.09)/(sb*1.12))); rows=Math.max(1,Math.floor((0.19-0.065)/(sb*1.12))+1); if(perSide*2*rows>=N) break; }
+  const pos=[], perRow=perSide*2;
+  for(let i=0;i<N;i++){ const row=Math.floor(i/perRow)%rows, j=i%perRow, side=j%2?1:-1, k=Math.floor(j/2);
+    pos.push({x:0.5+side*(0.09+(k+0.5)*sb*1.12)/A, y:0.065+row*sb*1.12+0.025*Math.pow(k/Math.max(1,perSide),2), s:sb}); }
+  scene.band={pos}; scene.bandKey=key; return scene.band;
+}
+function angDiff(a){ return ((a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; }
+
+function update(t,dt){
+  scene.g+=((scene.gather?1:0)-scene.g)*(1-Math.exp(-dt*1.1));
+  const G=scene.g, items=scene.items;
+  const trees=items.filter(i=>i.kind==='tree'), stars=items.filter(i=>i.kind==='star');
+  const others=items.filter(i=>i.kind!=='tree'&&i.kind!=='star').sort((a,b)=>a.hx-b.hx);
+  const fs=floatSize(items.length-trees.length), ts0=treeSize(trees.length);
+  const lay=gatherLayout(others.length,scene.A), band=starBand(stars.length,scene.A);
+  const gpos=new Map(); others.forEach((it,i)=>gpos.set(it,lay.pos[i]));
+  [...stars].sort((a,b)=>Math.abs(a.hx-0.5)-Math.abs(b.hx-0.5)).forEach((it,i)=>gpos.set(it,band.pos[i]));
+  for(const it of items){
+    const el=t-it.introStart, intro=el>=0&&el<INTRO_HOLD, after=el>=INTRO_HOLD&&el<INTRO_HOLD+3;
+    let fx,fy,fsz,frot,fa=1;
+    switch(it.kind){
+      case 'star': fx=it.hx+it.ax*0.5*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*0.5*Math.sin(t*it.fy+it.py); fsz=fs*0.72*it.sv; frot=t*it.spin; break;
+      case 'heart': fx=it.hx+it.ax*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*Math.sin(t*it.fy+it.py); fsz=fs*0.9*it.sv; frot=0.07*Math.sin(t*0.5+it.rp); break;
+      case 'tree': fsz=ts0*it.sv; fx=it.hx; fy=ground(it.hx)+0.012-fsz*it.hRatio/2; frot=0.035*Math.sin(t*0.9+it.rp); break;
+      case 'circle': { const cyc=(t*it.vs+it.hy)%0.74; fy=0.82-cyc; fx=it.hx+0.03*Math.sin(t*0.4+it.px); fsz=fs*0.8*it.sv; frot=0.06*Math.sin(t*0.6+it.rp); fa=clamp(Math.min(cyc/0.06,(0.74-cyc)/0.1),0,1); break; }
+      default: fx=it.hx+it.ax*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*Math.sin(t*it.fy+it.py); fsz=fs*it.sv; frot=0.09*Math.sin(t*0.45+it.rp);
+    }
+    const gp=gpos.get(it);
+    let tx=fx,ty=fy,ts=fsz,tr=frot,ta=fa,k=after?2.2:1.8;
+    if(gp){ tx=fx*(1-G)+gp.x*G; ty=fy*(1-G)+(gp.y+0.006*Math.sin(t*1.3+it.rp))*G; ts=fsz*(1-G)+gp.s*G; tr=frot*(1-G)+0; if(G>0.5) tr=0; ta=fa*(1-G)+G; }
+    if(el<0&&it.introStart>-50){ ta=0; if(it.a<0.05){ it.cx=0.5; it.cy=0.45; it.cs=0; } }
+    else if(intro){ tx=0.5; ty=0.45; ts=0.5; tr=0; ta=1; k=5; if(!it.burst){ it.burst=true; burst(it.kind); chime(it.kind); } }
+    if(it.fresh){ it.fresh=false; it.cx=tx; it.cy=ty; it.cs=ts; it.rot=tr; }
+    if(it.kind==='circle'&&!intro&&ta<0.15&&G<0.1&&Math.abs(ty-it.cy)>0.3){ it.cx=tx; it.cy=ty; }
+    const f=1-Math.exp(-dt*k);
+    it.cx+=(tx-it.cx)*f; it.cy+=(ty-it.cy)*f; it.cs+=(ts-it.cs)*f; it.rot+=angDiff(tr-it.rot)*f;
+    it.a+=(ta-it.a)*(1-Math.exp(-dt*5));
+    if(it.kind==='heart'){ const ph=t*2.2+it.rp; it.pulse=0.09*Math.pow(Math.max(0,Math.sin(ph)),12)+0.06*Math.pow(Math.max(0,Math.sin(ph-0.45)),12); } else it.pulse=0;
+  }
+  for(const p of scene.particles){ p.x+=p.vx*dt/scene.A; p.y+=p.vy*dt; p.vy+=0.05*dt; p.vx*=0.985; p.vy*=0.985; p.life-=dt; }
+  scene.particles=scene.particles.filter(p=>p.life>0);
+}
+function burst(kind){
+  const pc=KIND[kind]?KIND[kind].pc:'255,224,150';
+  for(let i=0;i<70;i++){ const an=rnd(0,6.28), sp=rnd(0.08,0.45);
+    scene.particles.push({x:0.5,y:0.45,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,life:rnd(1.2,2.6),max:2.6,r:rnd(1,3.2),c:Math.random()<0.6?pc:'255,255,255'}); }
+}
+function starPath(x,cx,cy,R){
+  x.beginPath();
+  for(let k=0;k<16;k++){ const an=-Math.PI/2+k*Math.PI/8, r=k%2?R*0.26:(k===8?R*3.3:k===0?R*2.1:k%4===0?R*2.0:R*0.95);
+    const px=cx+Math.cos(an)*r, py=cy+Math.sin(an)*r; k?x.lineTo(px,py):x.moveTo(px,py); }
+  x.closePath();
+}
+function glowAt(x,px,py,r,rgb,al){ if(al<=0.01) return; const g=x.createRadialGradient(px,py,0,px,py,r); g.addColorStop(0,`rgba(${rgb},${al})`); g.addColorStop(1,`rgba(${rgb},0)`); x.fillStyle=g; x.beginPath(); x.arc(px,py,r,0,6.283); x.fill(); }
+
+function render(tg,t){
+  const c=tg.c, win=tg.win, dpr=Math.min(tg.cap,win.devicePixelRatio||1);
+  const cw=Math.max(1,Math.round(c.clientWidth*dpr)), ch=Math.max(1,Math.round(c.clientHeight*dpr));
+  if(c.width!==cw) c.width=cw; if(c.height!==ch) c.height=ch;
+  const x=c.getContext('2d'), W=cw, H=ch, G=scene.g, u=H/1000;
+  const sky=x.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#03061a'); sky.addColorStop(0.45,'#0b1440'); sky.addColorStop(0.8,'#2a2257'); sky.addColorStop(1,'#3b2a55');
+  x.fillStyle=sky; x.fillRect(0,0,W,H);
+  x.fillStyle='#fff';
+  for(const s of STARS){ x.globalAlpha=(0.35+0.65*(0.5+0.5*Math.sin(t*s.sp+s.ph)))*0.9; x.beginPath(); x.arc(s.x*W,s.y*H,s.r*u*1.3,0,6.283); x.fill(); }
+  x.globalAlpha=1;
+  // 베들레헴의 별
+  const sx=W*0.5, sy=H*0.11, R=H*0.022*(1+0.06*Math.sin(t*1.6))*(1+G*0.35);
+  const gr=R*7*(1+G*0.6), gl=x.createRadialGradient(sx,sy,0,sx,sy,gr);
+  gl.addColorStop(0,`rgba(255,236,180,${0.55+0.3*G})`); gl.addColorStop(0.3,'rgba(255,214,130,0.18)'); gl.addColorStop(1,'rgba(255,214,130,0)');
+  x.fillStyle=gl; x.beginPath(); x.arc(sx,sy,gr,0,6.283); x.fill();
+  if(G>0.01){ const by=H*0.83, bw=H*0.2, bm=x.createLinearGradient(0,sy,0,by);
+    bm.addColorStop(0,`rgba(255,230,160,${0.22*G})`); bm.addColorStop(1,`rgba(255,230,160,${0.05*G})`);
+    x.fillStyle=bm; x.beginPath(); x.moveTo(sx-R*0.6,sy); x.lineTo(sx+R*0.6,sy); x.lineTo(sx+bw,by); x.lineTo(sx-bw,by); x.closePath(); x.fill(); }
+  const sg=x.createRadialGradient(sx,sy,0,sx,sy,R*3); sg.addColorStop(0,'#ffffff'); sg.addColorStop(0.35,'#fff2c4'); sg.addColorStop(1,'#f4c96b');
+  x.fillStyle=sg; starPath(x,sx,sy,R); x.fill();
+  // 언덕
+  x.fillStyle='#0d1233'; x.beginPath(); x.moveTo(0,H*HILL[0][1]);
+  for(const s of HILL) x.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); x.lineTo(W,H); x.lineTo(0,H); x.fill();
+  // 트리 (언덕 위, 앞 언덕보다 뒤)
+  const its=scene.items;
+  const isIntro=it=>{ const el=t-it.introStart; return el>=0&&el<INTRO_HOLD+1.5; };
+  for(const it of its) if(it.kind==='tree'&&!isIntro(it)) drawItem(x,it,W,H,t,G);
+  x.fillStyle='#080b22'; x.beginPath(); x.moveTo(0,H*0.93); x.quadraticCurveTo(W*0.3,H*0.88,W*0.5,H*0.95); x.quadraticCurveTo(W*0.75,H*1.0,W,H*0.9); x.lineTo(W,H); x.lineTo(0,H); x.fill();
+  // 마구간과 구유
+  const cx=W*0.5, base=H*0.985, sw=H*0.34, sh=H*0.18, warm=0.55+0.45*G+0.05*Math.sin(t*2.2);
+  glowAt(x,cx,base-sh*0.35,sw*(1+0.6*G),'255,196,110',0.28*warm);
+  x.fillStyle='#120c24'; x.fillRect(cx-sw*0.42,base-sh*0.6,sw*0.84,sh*0.6);
+  x.fillStyle='#1b1334'; x.beginPath(); x.moveTo(cx-sw*0.56,base-sh*0.56); x.lineTo(cx,base-sh); x.lineTo(cx+sw*0.56,base-sh*0.56); x.lineTo(cx+sw*0.5,base-sh*0.52); x.lineTo(cx,base-sh*0.9); x.lineTo(cx-sw*0.5,base-sh*0.52); x.closePath(); x.fill();
+  const ow=sw*0.46, oh=sh*0.5, og=x.createRadialGradient(cx,base-oh*0.3,0,cx,base-oh*0.3,ow*0.8);
+  og.addColorStop(0,`rgba(255,226,150,${0.95*warm})`); og.addColorStop(0.6,`rgba(232,150,70,${0.75*warm})`); og.addColorStop(1,'rgba(120,60,30,0.9)');
+  x.fillStyle=og; x.fillRect(cx-ow/2,base-oh,ow,oh);
+  x.fillStyle='#3a2414'; x.beginPath(); x.moveTo(cx-ow*0.32,base-oh*0.36); x.lineTo(cx+ow*0.32,base-oh*0.36); x.lineTo(cx+ow*0.22,base-oh*0.02); x.lineTo(cx-ow*0.22,base-oh*0.02); x.closePath(); x.fill();
+  x.strokeStyle='rgba(255,210,110,.9)'; x.lineWidth=Math.max(1,H*0.002);
+  for(let k=-4;k<=4;k++){ x.beginPath(); x.moveTo(cx+k*ow*0.06,base-oh*0.36); x.lineTo(cx+k*ow*0.075,base-oh*0.45); x.stroke(); }
+  glowAt(x,cx,base-oh*0.43,ow*0.22,'255,250,230',1);
+  // 문구
+  if(S.title){ x.globalAlpha=1-G; x.fillStyle='rgba(255,240,210,.92)'; x.font=`700 ${Math.round(H*0.04)}px ${FONT}`; x.textAlign='left'; x.textBaseline='top';
+    x.shadowColor='rgba(0,0,0,.6)'; x.shadowBlur=H*0.01; x.fillText(S.title,W*0.035,H*0.045); x.shadowBlur=0; x.globalAlpha=1; }
+  if(its.length){ x.fillStyle='rgba(255,240,210,.6)'; x.font=`500 ${Math.round(H*0.024)}px ${FONT}`; x.textAlign='right'; x.textBaseline='bottom'; x.fillText('도착한 선물 '+its.length+'개',W*0.97,H*0.97); }
+  if(G>0.02&&S.verse){
+    x.globalAlpha=Math.min(1,G*1.2); x.textAlign='center'; x.textBaseline='middle';
+    let fsz=H*0.05; x.font=`700 ${Math.round(fsz)}px ${FONT}`; const mw=x.measureText(S.verse).width; if(mw>W*0.9){ fsz*=W*0.9/mw; x.font=`700 ${Math.round(fsz)}px ${FONT}`; }
+    x.shadowColor='rgba(255,210,120,.8)'; x.shadowBlur=H*0.02; x.fillStyle='#fff8e6'; x.fillText(S.verse,W/2,H*0.235);
+    x.shadowBlur=0; x.font=`500 ${Math.round(H*0.028)}px ${FONT}`; x.fillStyle='rgba(255,230,180,.85)'; if(S.ref) x.fillText(S.ref,W/2,H*0.235+fsz*0.95);
+    x.globalAlpha=1;
+  }
+  for(const it of its) if(it.kind!=='tree'&&!isIntro(it)) drawItem(x,it,W,H,t,G);
+  for(const it of its) if(isIntro(it)) drawItem(x,it,W,H,t,G);
+  // 전시 화면 구석 QR
+  if(S.showQR&&qrCanvas&&cloud.ok&&G<0.98){
+    const q=H*0.17, pad=q*0.08, bx=W*0.02;
+    x.font=`700 ${Math.round(H*0.021)}px ${FONT}`; const tw=x.measureText('찍어서 하늘로 보내요').width;
+    const bw=Math.max(q,tw)+pad*2, bh=q+pad*2+H*0.04, by=H*0.97-bh;
+    x.globalAlpha=1-G;
+    x.fillStyle='rgba(255,255,255,.95)'; x.beginPath();
+    if(x.roundRect) x.roundRect(bx,by,bw,bh,H*0.012); else x.rect(bx,by,bw,bh); x.fill();
+    x.imageSmoothingEnabled=false; x.drawImage(qrCanvas,bx+(bw-q)/2,by+pad,q,q); x.imageSmoothingEnabled=true;
+    x.fillStyle='#1b1334'; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText('찍어서 하늘로 보내요',bx+bw/2,by+pad+q+H*0.022);
+    x.globalAlpha=1;
+  }
+  for(const p of scene.particles){ x.globalAlpha=clamp(p.life/p.max*1.6,0,1); x.fillStyle=`rgb(${p.c})`; x.beginPath(); x.arc(p.x*W,p.y*H,p.r*u*2,0,6.283); x.fill(); }
+  x.globalAlpha=1;
+}
+function drawItem(x,it,W,H,t,G){
+  if(it.a<0.01||it.cs<0.002) return;
+  const el=t-it.introStart, px=it.cx*W, py=it.cy*H, s=it.cs*H*(1+it.pulse);
+  const iw=it.img.naturalWidth, ih=it.img.naturalHeight, sc=s/Math.max(iw,ih), dw=iw*sc, dh=ih*sc;
+  let glow=0; if(el>=0) glow=el<INTRO_HOLD?Math.min(1,el/0.4):Math.max(0,1-(el-INTRO_HOLD)/1.4);
+  if(glow>0.01){
+    glowAt(x,px,py,s*0.95,KIND[it.kind]?'255,226,150':'255,226,150',0.55*glow);
+    x.save(); x.translate(px,py); x.rotate(t*0.25); x.fillStyle=`rgba(255,240,200,${0.1*glow})`;
+    for(let k=0;k<12;k++){ x.rotate(Math.PI/6); x.beginPath(); x.moveTo(0,0); x.lineTo(s*1.05,-s*0.05); x.lineTo(s*1.05,s*0.05); x.closePath(); x.fill(); }
+    x.restore();
+  }
+  x.globalAlpha=it.a;
+  if(it.kind==='star') glowAt(x,px,py,s*0.8,'255,225,150',0.4*(0.5+0.5*Math.sin(t*2.3+it.rp)));
+  else if(it.kind==='circle') glowAt(x,px,py,s*0.95,'255,190,100',0.38+0.08*Math.sin(t*3+it.rp));
+  else if(it.kind==='heart'&&it.pulse>0.005) glowAt(x,px,py,s*0.85,'255,130,170',it.pulse*5);
+  x.save();
+  if(it.kind==='tree'&&glow<0.5){
+    x.translate(px,py+dh/2); x.rotate(it.rot); x.drawImage(it.img,-dw/2,-dh,dw,dh);
+    const lr=Math.max(1.5,s*0.022);
+    for(const L of it.lights){ const tw=0.5+0.5*Math.sin(t*(2+G*2)+L.ph); x.globalAlpha=it.a*(0.35+0.65*tw);
+      const lx=L.u*dw, ly=-dh+L.v*dh; glowAt(x,lx,ly,lr*3,L.c,0.6*tw); x.fillStyle=`rgb(${L.c})`; x.beginPath(); x.arc(lx,ly,lr,0,6.283); x.fill(); }
+  } else {
+    x.translate(px,py); x.rotate(it.rot); x.drawImage(it.img,-dw/2,-dh/2,dw,dh);
+  }
+  x.restore(); x.globalAlpha=1;
+  if(S.showNames&&it.name&&s>H*0.04){
+    const big=glow>0.3, fsz=Math.round(big?H*0.045:Math.max(11,H*0.021));
+    x.globalAlpha=it.a; x.font=`700 ${fsz}px ${FONT}`; x.textAlign='center'; x.textBaseline='top';
+    x.lineWidth=fsz*0.28; x.strokeStyle='rgba(5,8,30,.85)'; x.lineJoin='round';
+    const ly=py+dh/2+fsz*0.3; x.strokeText(it.name,px,ly); x.fillStyle=big?'#ffe7a8':'#fff'; x.fillText(it.name,px,ly); x.globalAlpha=1;
+  }
+}
+
+/* ---------------- 전시 창 ---------------- */
+let popup=null, popupCanvas=null;
+function openPopup(){
+  ensureAudio();
+  popup=window.open('','xmasStarDisplay','width=1280,height=720');
+  if(!popup){ toast('새 창이 차단되었어요. 주소창 오른쪽의 팝업 차단 아이콘을 눌러 ‘허용’해 주세요.',4500); return; }
+  const d=popup.document; d.open();
+  d.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>★ 성탄 그림 전시</title><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;cursor:none}#h{position:fixed;left:50%;top:16px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.5);padding:8px 16px;border-radius:20px;font:14px sans-serif;transition:opacity 1s}</style></head><body><canvas id="c"></canvas><div id="h">이 창을 프로젝터 화면으로 옮긴 뒤 더블클릭하면 전체화면이 됩니다</div></body></html>');
+  d.close();
+  popupCanvas=d.getElementById('c');
+  d.addEventListener('dblclick',()=>{ const el=d.documentElement; if(!d.fullscreenElement&&el.requestFullscreen) el.requestFullscreen().catch(()=>{}); else if(d.exitFullscreen) d.exitFullscreen().catch(()=>{}); });
+  d.addEventListener('keydown',onKey);
+  setTimeout(()=>{ try{ const h=d.getElementById('h'); if(h) h.style.opacity='0'; }catch(e){} },7000);
+  popup.focus(); updatePopupStatus(); kick();
+}
+function popupOpen(){ try{ return !!(popup&&!popup.closed&&popupCanvas&&popupCanvas.ownerDocument===popup.document); }catch(e){ return false; } }
+function updatePopupStatus(){ $('#popupStatus').innerHTML=popupOpen()?'전시 창: <b>열림</b>':'전시 창: 닫힘'; }
+$('#btnPopup').addEventListener('click',openPopup);
+let inlineOn=false;
+function setInline(on){
+  inlineOn=on; $('#inDisplay').classList.toggle('show',on);
+  if(on){ const el=$('#inDisplay'); if(el.requestFullscreen) el.requestFullscreen().catch(()=>{}); const h=$('#inHint'); h.style.opacity='1'; setTimeout(()=>h.style.opacity='0',4000); }
+  else if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+}
+$('#btnInline').addEventListener('click',()=>{ ensureAudio(); setInline(true); });
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&inlineOn) setInline(false); });
+function toggleGather(){ scene.gather=!scene.gather; $('#btnGather').classList.toggle('on',scene.gather);
+  $('#btnGather').innerHTML=scene.gather?'✨ 다시 흩어지기 <span class="kbd">G</span>':'✨ 구유로 모이기 <span class="kbd">G</span>'; }
+$('#btnGather').addEventListener('click',toggleGather);
+function onKey(e){
+  const tg=e.target, tag=(tg&&tg.tagName)||'';
+  if((tag==='INPUT'&&tg.type!=='checkbox'&&tg.type!=='range')||tag==='TEXTAREA'||tag==='SELECT'){ if(e.key==='Enter'&&tg.id==='nameIn'){ e.preventDefault(); capture(); } return; }
+  if($('#modal').classList.contains('show')) return;
+  if(e.code==='Space'){ e.preventDefault(); capture(); }
+  else if(e.key==='g'||e.key==='G'||e.key==='ㅎ') toggleGather();
+  else if(e.key==='f'||e.key==='F'||e.key==='ㄹ') setInline(!inlineOn);
+  else if(e.key==='Escape'&&inlineOn) setInline(false);
+}
+document.addEventListener('keydown',onKey);
+
+/* ---------------- 반복 루프 ---------------- */
+const mini=$('#mini'), inCanvas=$('#inCanvas');
+let loopId=0, lastT=now(), lastTickAt=0;
+function tick(id){
+  if(id!==loopId) return;
+  const t=now(), dt=Math.min(0.05,Math.max(0.001,t-lastT)); lastT=t; lastTickAt=t;
+  const po=popupOpen();
+  scene.A=po?popupCanvas.clientWidth/Math.max(1,popupCanvas.clientHeight):inlineOn?inCanvas.clientWidth/Math.max(1,inCanvas.clientHeight):16/9;
+  if(!isFinite(scene.A)||scene.A<=0) scene.A=16/9;
+  if(dirHandle&&watching&&t-lastScan>2){ lastScan=t; scanFolder(); }
+  try{ drawPreview(); }catch(e){}
+  update(t,dt);
+  try{ render({c:mini,win:window,cap:1},t); }catch(e){}
+  if(inlineOn) try{ render({c:inCanvas,win:window,cap:1.5},t); }catch(e){}
+  if(po) try{ render({c:popupCanvas,win:popup,cap:1.5},t); }catch(e){}
+  (po?popup:window).requestAnimationFrame(()=>tick(id));
+}
+function kick(){ loopId++; const id=loopId; window.requestAnimationFrame(()=>tick(id)); }
+setInterval(()=>{ updatePopupStatus(); if(now()-lastTickAt>0.5) kick(); },500);
+
+window.__xmasTest={ kinds:()=>drawings.map(d=>d.kind),
+  debug:async(url)=>{ const im=await loadImg(url); const w=fitCanvas(fitCanvas(im,1600),900); const r=paperCut(w); if(!r||r.paperFull) return 'nocut';
+    let cur={m:r.mask,w:r.w,h:r.h}, out=[]; for(let k=0;k<4;k++){ const f=shapeFeat(cur.m,cur.w,cur.h); out.push({k,notch:f.notch,maxPos:f.maxPos,a06:f.at(0.06),a2:f.at(0.2),a3:f.at(0.3),a7:f.at(0.7),a92:f.at(0.92),asp:f.aspect}); cur=rotMask(cur.m,cur.w,cur.h);} return {cls:classify(r.mask,r.w,r.h),out}; } };
+
+/* ---------------- 시작 ---------------- */
+(async()=>{
+  const ok=await dbOpen();
+  if(ok){
+    const all=(await dbAll())||[]; all.sort((a,b)=>a.created-b.created);
+    for(const r of all){ try{ r.kind=KIND[r.kind]?r.kind:'card'; r.img=await loadImg(r.dataURL); drawings.push(r); sceneAdd(r,false); }catch(e){} }
+    const h=await metaGet('dir');
+    if(h&&h.name){ dirHandle=h;
+      let perm='prompt'; try{ perm=await h.queryPermission({mode:'read'}); }catch(e){}
+      if(perm==='granted'){ watching=true; } else { watching=false; folderErr='새로고침 후에는 한 번 더 허락이 필요해요. ‘폴더 다시 연결’을 눌러 주세요.'; $('#btnResume').hidden=false; }
+      updateFolderStatus(); }
+  } else toast('이 브라우저에서는 자동 저장이 안 돼요. 행사 후 ‘백업 내보내기’를 꼭 해 주세요.',5000);
+  renderGallery(); listCams(); kick();
+  if(S.cloudOn&&parseCfg(S.fbCfg)) cloudConnect(true);
+})();
+})();
+</script>
+</body>
+</html>

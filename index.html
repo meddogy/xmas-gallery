@@ -108,6 +108,13 @@ details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:
 .ph-done{font-size:80px;animation:pop .8s ease}
 @keyframes pop{0%{transform:scale(.2) rotate(-30deg);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 #phMsg{color:#ffb98a;min-height:22px}
+.bgList{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:4px 0 10px}
+.bgItem{display:flex;align-items:center;gap:8px;background:#10163a;border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:13px;color:#d6daf0}
+.bgItem.cur{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.bgItem .sw{width:22px;height:22px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,.25)}
+.bgItem button{margin-left:auto;padding:4px 9px;font-size:12px;border-radius:8px}
+.thumb.gone{opacity:.42}
+.thumb.gone::after{content:'쉬는 중';position:absolute;top:28px;left:0;right:0;text-align:center;font-size:11px;color:#cfd4f2}
 .status{font-size:12px;color:var(--muted)}
 .status b{color:var(--green)}
 </style>
@@ -306,7 +313,24 @@ details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:
     </section>
 
     <section class="card">
-      <h2><span class="n">6</span> 화면 문구 설정</h2>
+      <h2><span class="n">6</span> 화면 설정</h2>
+      <div class="field">그림이 화면에 머무는 시간
+        <select id="lifeMin">
+          <option value="0">계속 머물기</option><option value="1">1분</option><option value="2">2분</option>
+          <option value="3">3분</option><option value="5">5분</option><option value="10">10분</option><option value="20">20분</option>
+        </select>
+        <span class="hint" style="font-size:12px">시간이 지나면 하늘로 올라가며 사라집니다. 목록에는 남아 있고, 썸네일을 누르면 다시 나와요.</span>
+      </div>
+      <label class="chk"><input type="checkbox" id="gatherAll"> ‘구유로 모이기’ 때 사라진 그림도 모두 다시 불러오기</label>
+      <div class="field" style="margin-top:14px">배경 자동으로 바꾸기
+        <select id="bgEvery">
+          <option value="0">바꾸지 않기</option><option value="1">1분마다</option><option value="2">2분마다</option>
+          <option value="3">3분마다</option><option value="5">5분마다</option><option value="10">10분마다</option>
+        </select>
+      </div>
+      <div class="bgList" id="bgList"></div>
+      <label class="chk"><input type="checkbox" id="bgCaption"> 배경이 바뀔 때 그 장면의 말씀 띄우기</label>
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
       <div class="field">화면 제목<input type="text" id="title"></div>
       <div class="field">‘구유로 모이기’ 때 떠오르는 말씀<textarea id="verse" rows="2"></textarea></div>
       <div class="field">말씀 출처<input type="text" id="ref"></div>
@@ -432,6 +456,7 @@ const DEFAULTS = {
   ref:'마태복음 2:2',
   showNames:true, sound:true, thr:0.14, sticker:true, fillHoles:true, despeckle:true, edgeRemove:false,
   mode:'paper', forceKind:'auto', fbCfg:'', baseUrl:'', room:'', showQR:true, cloudOn:false,
+  lifeMin:5, gatherAll:true, bgEvery:3, bgScenes:['night','snow','field','glory'], bgCaption:true,
   mT:6, mB:6, mL:6, mR:6, rot:0, mirror:false, camId:''
 };
 let S = Object.assign({}, DEFAULTS);
@@ -449,6 +474,8 @@ if(!S.room){ S.room=Math.random().toString(36).slice(2,8); saveS(); }
 if(!S.baseUrl && /^https?:$/.test(location.protocol)){ S.baseUrl=location.origin+location.pathname; }
 ['title','verse','ref','mode','forceKind','fbCfg','baseUrl'].forEach(k=>bind(k,k,'txt'));
 bind('showQR','showQR','chk');
+['lifeMin','bgEvery'].forEach(k=>bind(k,k,'txt'));
+['gatherAll','bgCaption'].forEach(k=>bind(k,k,'chk'));
 $('#rot').value = String(S.rot);
 $('#rot').addEventListener('change',()=>{ S.rot=parseInt($('#rot').value,10); saveS(); });
 function onSetting(k){ if(k==='thr') $('#thrVal').textContent = '('+Math.round(S.thr*100)+')'; }
@@ -754,7 +781,13 @@ function shapeFeat(m,W,H){
   let cs=0,cw=0; for(let y=top;y<=bot;y++){ cs+=cen[y]*ws[y]; cw+=ws[y]; } const mc=cs/Math.max(1,cw);
   let dev=0,dn=0; for(let y=top+Math.round(Hh*0.1); y<=top+Math.round(Hh*0.9); y++){ if(ws[y]>0){ dev+=Math.abs(cen[y]-mc); dn++; } }
   let lowMax=0; for(let i=20;i<=38;i++) lowMax=Math.max(lowMax,at(i/40));
-  return {at, maxPos, notch:nr?nn/nr:0, botNotch:br?bn/br:0, aspect:Hh/maxW, sym:dn?dev/dn/maxW:1, lowMax};
+  // 기울어진 모양도 봐주기: 줄 가운데 위치를 직선으로 맞춘 뒤 남는 흔들림
+  let n0=0,sy0=0,sc0=0,syy=0,syc=0; for(let y=top;y<=bot;y++) if(ws[y]>0){ n0++; sy0+=y; sc0+=cen[y]; syy+=y*y; syc+=y*cen[y]; }
+  const slope=n0>1?(n0*syc-sy0*sc0)/Math.max(1e-6,(n0*syy-sy0*sy0)):0, icpt=n0?(sc0-slope*sy0)/n0:0;
+  let dl=0,dln=0; for(let y=top+Math.round(Hh*0.1); y<=top+Math.round(Hh*0.9); y++) if(ws[y]>0){ dl+=Math.abs(cen[y]-(icpt+slope*y)); dln++; }
+  const cenAt=(f0,f1)=>{ let s1=0,c1=0; for(let y=top+Math.round(f0*(Hh-1)); y<=top+Math.round(f1*(Hh-1)); y++) if(ws[y]>0){ s1+=cen[y]; c1++; } return c1?s1/c1:mc; };
+  const lineAt=f0=>icpt+slope*(top+f0*(Hh-1));
+  return {at, maxPos, notch:nr?nn/nr:0, botNotch:br?bn/br:0, aspect:Hh/maxW, sym:dn?dev/dn/maxW:1, symLin:dln?dl/dln/maxW:1, tilt:Math.abs(slope), cenAt, lineAt, maxW, mc, lowMax};
 }
 function classify(mask,w,h){
   let area=0,sx=0,sy=0; const pts=[];
@@ -777,22 +810,35 @@ function classify(mask,w,h){
     for(let j=1;j<=4;j++){ if(Rs[(k+j)%NA]>v||Rs[(k-j+NA)%NA]>v){ok=false;break;} }
     if(ok&&!peaks.some(p=>Math.min(Math.abs(p-k),NA-Math.abs(p-k))<6)) peaks.push(k); }
   const ratio=rmin/Math.max(1,rmax);
-  if(peaks.length>=5&&peaks.length<=8&&ratio<0.62&&solidity<0.82) return {kind:'star',rot:0};
+  let even=false;
+  if(peaks.length>=5&&peaks.length<=8){
+    const ps=[...peaks].sort((a,b)=>a-b), gaps=ps.map((v,i)=>((ps[(i+1)%ps.length]-v)+NA)%NA||NA);
+    const mg=gaps.reduce((a,b)=>a+b,0)/gaps.length, sd=Math.sqrt(gaps.reduce((a,b)=>a+(b-mg)*(b-mg),0)/gaps.length);
+    const pr=ps.map(k=>Rs[k]); even = sd/mg<0.35 && Math.min(...pr)/Math.max(...pr)>0.7;
+  }
+  if(even&&ratio<0.62&&solidity<0.82) return {kind:'star',rot:0};
   if(extent>0.86&&solidity>0.94) return {kind:'card',rot:0};
   if(ratio>0.78&&solidity>0.92) return {kind:'circle',rot:0};
   // 하트·트리는 네 방향으로 돌려 보며 확인
-  let cur={m:mask,w,h};
+  let cur={m:mask,w,h}, best={kind:'card',rot:0,score:0};
   for(let k=0;k<4;k++){
     const f=shapeFeat(cur.m,cur.w,cur.h);
     if(f){
+      let sc=0, kind='';
       const heart = f.sym<0.06 && f.notch>0.4 && f.maxPos>=0.12 && f.maxPos<=0.55 && f.at(0.92)<0.45 && f.at(0.2)>0.55 && f.aspect>0.65 && f.aspect<1.5;
-      if(heart) return {kind:'heart',rot:k};
-      const tree = f.sym<0.06 && f.notch<0.25 && f.botNotch<0.3 && f.at(0.06)<0.35 && f.maxPos>=0.45 && f.aspect>0.9 && f.aspect<2.8 && f.at(0.3)<f.lowMax*0.85 && solidity<0.97;
-      if(tree) return {kind:'tree',rot:k};
+      // 기둥이 있는 나무 (둥근 나무·구름 나무·전나무 모두)
+      const t1=f.at(0.86), t2=f.at(0.92), t3=f.at(0.97), tMax=Math.max(t1,t2,t3), tMin=Math.min(t1,t2,t3);
+      let canopy=0; for(let i=6;i<=28;i++) canopy=Math.max(canopy,f.at(i/40));
+      const trunk = tMax<0.4 && tMin>0.02 && tMax/tMin<1.8 && canopy>=2.2*tMax && f.botNotch<0.3 && f.notch<0.35
+        && Math.abs((f.cenAt(0.86,0.97)-f.lineAt(0.915))-(f.cenAt(0.15,0.7)-f.lineAt(0.425)))<0.14*f.maxW && f.symLin<0.12 && f.tilt<0.6 && f.aspect>0.7 && f.aspect<3.5;
+      // 위가 뾰족하고 아래로 넓어지는 나무 (세모·층층 트리)
+      const conifer = f.symLin<0.09 && f.tilt<0.6 && f.notch<0.35 && (f.botNotch<0.3||f.tilt>0.1) && f.at(0.05)<0.45 && f.maxPos>=0.4 && f.aspect>0.75 && f.aspect<3.2 && f.at(0.3)<f.lowMax*0.9;
+      if(heart){ sc=4; kind='heart'; } else if(trunk){ sc=3; kind='tree'; } else if(conifer){ sc=2; kind='tree'; }
+      if(sc>best.score) best={kind,rot:k,score:sc};
     }
     cur=rotMask(cur.m,cur.w,cur.h);
   }
-  return {kind:'card',rot:0};
+  return {kind:best.kind,rot:best.rot};
 }
 
 /* ---------------- 그림 추가 ---------------- */
@@ -877,7 +923,7 @@ function renderGallery(){
   const list=[...drawings].sort((a,b)=>b.created-a.created);
   if(!list.length) g.innerHTML='<div class="empty">아직 도착한 그림이 없어요.</div>';
   list.forEach(d=>{
-    const el=document.createElement('div'); el.className='thumb checker'; el.title='클릭하면 전시 화면 가운데에 다시 보여 줍니다';
+    const el=document.createElement('div'); const sit=scene.items.find(i=>i.id===d.id); el.className='thumb checker'+(sit&&sit.hidden?' gone':''); el.title=(sit&&sit.hidden)?'쉬는 중 — 클릭하면 다시 화면에 나타납니다':'클릭하면 전시 화면 가운데에 다시 보여 줍니다';
     const im=new Image(); im.src=d.dataURL; el.appendChild(im);
     const nm=document.createElement('div'); nm.className='nm'; nm.textContent=d.name||'＋ 이름'; nm.title='이름 넣기';
     nm.addEventListener('click',ev=>{ ev.stopPropagation(); setName(d); }); el.appendChild(nm);
@@ -1112,7 +1158,7 @@ function sceneAdd(rec,intro){
     ax:rnd(0.02,0.05),ay:rnd(0.015,0.035),fx:rnd(0.10,0.24),fy:rnd(0.12,0.28),px:rnd(0,6.28),py:rnd(0,6.28),rp:rnd(0,6.28),
     spin:(Math.random()<0.5?-1:1)*rnd(0.12,0.3), vs:rnd(0.012,0.022), pulse:0,
     lights:Array.from({length:8},()=>{ const v=rnd(0.2,0.88); return {v,u:rnd(-1,1)*0.33*v,ph:rnd(0,6.28),c:['255,90,90','255,215,90','120,200,255','255,255,255','255,140,220'][Math.floor(Math.random()*5)]}; }),
-    cx:0.5,cy:0.45,cs:0,rot:0,a:0,introStart:-99,burst:true};
+    cx:0.5,cy:0.45,cs:0,rot:0,a:0,introStart:-99,burst:true,liveFrom:rec.created||Date.now(),hidden:false,leftBurst:false};
   pickHome(it);
   if(intro){ const t=now(); it.introStart=Math.max(t+0.15,scene.lastIntro+2.4); scene.lastIntro=it.introStart; it.burst=false; }
   else { it.cs=0.0001; it.cx=it.hx; it.cy=it.hy; it.a=0; it.introStart=-99; it.fresh=true; }
@@ -1120,7 +1166,8 @@ function sceneAdd(rec,intro){
 }
 function spotlight(id){
   const it=scene.items.find(i=>i.id===id); if(!it) return;
-  ensureAudio(); const t=now(); it.introStart=Math.max(t+0.05,scene.lastIntro+2.4); scene.lastIntro=it.introStart; it.burst=false;
+  ensureAudio(); const t=now(); it.introStart=Math.max(t+0.05,scene.lastIntro+2.4); scene.lastIntro=it.introStart; it.burst=false; it.liveFrom=Date.now(); it.hidden=false;
+  setTimeout(renderGallery,50);
 }
 function gatherLayout(N,A){
   const key=N+'|'+A.toFixed(2); if(scene.layoutKey===key) return scene.layout;
@@ -1147,7 +1194,19 @@ function angDiff(a){ return ((a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math
 
 function update(t,dt){
   scene.g+=((scene.gather?1:0)-scene.g)*(1-Math.exp(-dt*1.1));
-  const G=scene.g, items=scene.items;
+  const G=scene.g, all=scene.items;
+  const life=(+S.lifeMin||0)*60, nowMs=Date.now();
+  for(const it of all){
+    const el=t-it.introStart, introish=el>-0.5&&el<INTRO_HOLD+0.5&&it.introStart>-50;
+    const gone=life>0 && (nowMs-it.liveFrom)/1000>life && !introish;
+    it.hidden = gone && !(scene.gather && S.gatherAll);
+  }
+  for(const it of all){ if(!it.hidden) continue;
+    if(!it.leftBurst){ it.leftBurst=true; if(it.a>0.3) sparkleAt(it.cx,it.cy,it.kind); }
+    const f=1-Math.exp(-dt*0.9);
+    it.cy+=((Math.max(-0.25,it.cy-0.12))-it.cy)*f; it.cs+=(it.cs*0.55-it.cs)*f*0.6; it.a+=(0-it.a)*(1-Math.exp(-dt*1.6));
+  }
+  const items=all.filter(i=>!i.hidden); items.forEach(i=>i.leftBurst=false);
   const trees=items.filter(i=>i.kind==='tree'), stars=items.filter(i=>i.kind==='star');
   const others=items.filter(i=>i.kind!=='tree'&&i.kind!=='star').sort((a,b)=>a.hx-b.hx);
   const fs=floatSize(items.length-trees.length), ts0=treeSize(trees.length);
@@ -1179,10 +1238,90 @@ function update(t,dt){
   for(const p of scene.particles){ p.x+=p.vx*dt/scene.A; p.y+=p.vy*dt; p.vy+=0.05*dt; p.vx*=0.985; p.vy*=0.985; p.life-=dt; }
   scene.particles=scene.particles.filter(p=>p.life>0);
 }
+function sparkleAt(px,py,kind){
+  const pc=KIND[kind]?KIND[kind].pc:'255,224,150';
+  for(let i=0;i<28;i++){ const an=rnd(0,6.28), sp=rnd(0.03,0.16);
+    scene.particles.push({x:px,y:py,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp-0.08,life:rnd(0.8,1.8),max:1.8,r:rnd(0.8,2.4),c:Math.random()<0.6?pc:'255,255,255'}); }
+}
 function burst(kind){
   const pc=KIND[kind]?KIND[kind].pc:'255,224,150';
   for(let i=0;i<70;i++){ const an=rnd(0,6.28), sp=rnd(0.08,0.45);
     scene.particles.push({x:0.5,y:0.45,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,life:rnd(1.2,2.6),max:2.6,r:rnd(1,3.2),c:Math.random()<0.6?pc:'255,255,255'}); }
+}
+/* ---------------- 배경 장면 ---------------- */
+const SCENES=[
+  {id:'night', name:'베들레헴의 밤', sky:['#03061a','#0b1440','#2a2257','#3b2a55'], stars:1,   back:'#0d1233', front:'#080b22',
+   cap:'동방에서 보던 그 별이 문득 앞서 인도하여 가다가 아기 있는 곳 위에 머물러 서 있는지라', capRef:'마태복음 2:9'},
+  {id:'snow',  name:'눈 내리는 밤', sky:['#0a1430','#1b2b55','#3b4f7c','#5f7398'], stars:0.45, back:'#7f93b6', front:'#b9c7dc',
+   cap:'너희의 죄가 주홍 같을지라도 눈과 같이 희어질 것이요', capRef:'이사야 1:18'},
+  {id:'field', name:'목자들의 들판', sky:['#020c14','#082233','#123c4d','#235560'], stars:0.95, back:'#0b2824', front:'#061a17',
+   cap:'그 지역에 목자들이 밤에 밖에서 자기 양 떼를 지키더니', capRef:'누가복음 2:8'},
+  {id:'glory', name:'하늘 영광', sky:['#1a1440','#4f2a62','#b85d6c','#eea66c'], stars:0.2, back:'#2a1838', front:'#170d22',
+   cap:'지극히 높은 곳에서는 하나님께 영광이요 땅에서는 하나님이 기뻐하신 사람들 중에 평화로다', capRef:'누가복음 2:14'}
+];
+const FLAKES=Array.from({length:170},()=>({x:Math.random(),y:Math.random()*1.1,r:rnd(0.6,2.2),sp:rnd(0.025,0.07),dr:rnd(0.3,1.1),ph:rnd(0,6.28)}));
+const MOTES=Array.from({length:60},()=>({x:Math.random(),y:Math.random(),r:rnd(0.8,2.2),sp:rnd(0.01,0.03),ph:rnd(0,6.28)}));
+const BG_FADE=4;
+scene.bg={cur:0,prev:-1,tx:-99,last:now(),capT:now()+1};
+function bgEnabled(){ const l=SCENES.map((s,i)=>i).filter(i=>(S.bgScenes||[]).includes(SCENES[i].id)); return l.length?l:[0]; }
+function setBg(i){ const b=scene.bg; if(i===b.cur) return; b.prev=b.cur; b.cur=i; b.tx=now(); b.last=now(); b.capT=now()+1.2; renderBgList(); }
+function nextBg(){ const l=bgEnabled(); const pos=l.indexOf(scene.bg.cur); const n=l[(pos+1)%l.length]; if(n!==scene.bg.cur) setBg(n); else scene.bg.last=now(); }
+function bgWeights(t){ const b=scene.bg, p=b.prev<0?1:clamp((t-b.tx)/BG_FADE,0,1); return {p, A:b.prev>=0&&p<1?SCENES[b.prev]:null, B:SCENES[b.cur]}; }
+function hillPath(x,W,H){ x.beginPath(); x.moveTo(0,H*HILL[0][1]); for(const s of HILL) x.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); x.lineTo(W,H); x.lineTo(0,H); x.closePath(); }
+function drawSky(x,S0,W,H,t,u,al){
+  if(al<=0) return;
+  x.globalAlpha=al; const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,S0.sky[0]); g.addColorStop(0.45,S0.sky[1]); g.addColorStop(0.8,S0.sky[2]); g.addColorStop(1,S0.sky[3]);
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  if(S0.stars>0){ x.fillStyle='#fff'; for(const s of STARS){ x.globalAlpha=al*S0.stars*(0.35+0.65*(0.5+0.5*Math.sin(t*s.sp+s.ph)))*0.9; x.beginPath(); x.arc(s.x*W,s.y*H,s.r*u*1.3,0,6.283); x.fill(); } }
+  if(S0.id==='glory'){
+    x.save(); x.translate(W*0.5,-H*0.08);
+    for(let k=0;k<15;k++){ const an=Math.PI/2+(k-7)*0.12+0.025*Math.sin(t*0.25+k); x.globalAlpha=al*0.07*(0.6+0.4*Math.sin(t*0.5+k*1.7));
+      x.fillStyle='#ffe6b0'; x.beginPath(); x.moveTo(0,0); x.lineTo(Math.cos(an-0.035)*H*1.4,Math.sin(an-0.035)*H*1.4); x.lineTo(Math.cos(an+0.035)*H*1.4,Math.sin(an+0.035)*H*1.4); x.closePath(); x.fill(); }
+    x.restore();
+    for(const m of MOTES){ const yy=((m.y-t*m.sp)%1+1)%1; x.globalAlpha=al; glowAt(x,(m.x+0.01*Math.sin(t+m.ph))*W,yy*H*0.85,m.r*u*5,'255,225,160',0.5*(0.5+0.5*Math.sin(t*2+m.ph))); }
+  }
+  x.globalAlpha=1;
+}
+function drawBackHill(x,S0,W,H,t,u,al){
+  if(al<=0) return;
+  x.globalAlpha=al; x.fillStyle=S0.back; hillPath(x,W,H); x.fill();
+  if(S0.id==='snow'){
+    for(const hx of [0.07,0.15,0.86,0.94]){ const gy=ground(hx)*H+H*0.01, hw=H*0.06, hh=H*0.05, X=hx*W;
+      x.fillStyle='#3a3552'; x.fillRect(X-hw/2,gy-hh,hw,hh);
+      x.fillStyle='#f4f7fc'; x.beginPath(); x.moveTo(X-hw*0.62,gy-hh); x.lineTo(X,gy-hh*1.75); x.lineTo(X+hw*0.62,gy-hh); x.closePath(); x.fill();
+      x.fillStyle='rgba(255,210,120,.95)'; x.fillRect(X-hw*0.15,gy-hh*0.7,hw*0.3,hh*0.35);
+      x.globalAlpha=al; glowAt(x,X,gy-hh*0.5,hw*0.9,'255,200,110',0.25); x.globalAlpha=al; }
+  }
+  if(S0.id==='field'){
+    for(const hx of [0.08,0.14,0.2,0.79,0.85,0.92]){ const gy=ground(hx)*H+H*0.004, X=hx*W, bw=H*0.034, bh=H*0.02, bob=Math.sin(t*0.8+hx*20)*H*0.002;
+      x.fillStyle='rgba(215,220,228,.88)'; x.beginPath(); x.ellipse(X,gy-bh+bob,bw/2,bh/2,0,0,6.283); x.fill();
+      x.fillStyle='#2a2f38'; x.beginPath(); x.ellipse(X+bw*0.55,gy-bh*1.1+bob,bw*0.17,bh*0.32,0.3,0,6.283); x.fill();
+      x.fillRect(X-bw*0.25,gy-bh*0.6,bw*0.07,bh*0.6); x.fillRect(X+bw*0.2,gy-bh*0.6,bw*0.07,bh*0.6); }
+    const fx=0.31*W, fy=ground(0.31)*H+H*0.006, fl=0.8+0.2*Math.sin(t*9)+0.1*Math.sin(t*23);
+    glowAt(x,fx,fy-H*0.02,H*0.12*fl,'255,150,60',0.35);
+    x.fillStyle=`rgba(255,${170+Math.round(40*fl)},80,.95)`; x.beginPath(); x.moveTo(fx-H*0.012,fy); x.quadraticCurveTo(fx,fy-H*0.05*fl,fx+H*0.012,fy); x.closePath(); x.fill();
+  }
+  x.globalAlpha=1;
+}
+function drawFrontHill(x,S0,W,H,al){
+  if(al<=0) return; x.globalAlpha=al; x.fillStyle=S0.front;
+  x.beginPath(); x.moveTo(0,H*0.93); x.quadraticCurveTo(W*0.3,H*0.88,W*0.5,H*0.95); x.quadraticCurveTo(W*0.75,H*1.0,W,H*0.9); x.lineTo(W,H); x.lineTo(0,H); x.fill(); x.globalAlpha=1;
+}
+function drawSnow(x,W,H,t,u,w){
+  if(w<=0.01) return; x.fillStyle='#fff';
+  for(const f of FLAKES){ const yy=((f.y+t*f.sp)%1.1)-0.05, xx=f.x+0.02*Math.sin(t*f.dr+f.ph); x.globalAlpha=w*0.85; x.beginPath(); x.arc(xx*W,yy*H,f.r*u*2.2,0,6.283); x.fill(); }
+  x.globalAlpha=1;
+}
+function renderBgList(){
+  const box=$('#bgList'); if(!box) return; box.innerHTML='';
+  SCENES.forEach((sc,i)=>{
+    const d=document.createElement('div'); d.className='bgItem'+(scene.bg.cur===i?' cur':'');
+    d.innerHTML=`<input type="checkbox" title="자동으로 바뀔 때 포함" ${(S.bgScenes||[]).includes(sc.id)?'checked':''}><span class="sw" style="background:linear-gradient(180deg,${sc.sky[1]},${sc.sky[3]})"></span><span>${sc.name}</span><button class="btn">지금 보기</button>`;
+    d.querySelector('input').addEventListener('change',e=>{ const set=new Set(S.bgScenes||[]); e.target.checked?set.add(sc.id):set.delete(sc.id); S.bgScenes=SCENES.map(s=>s.id).filter(id=>set.has(id)); saveS(); });
+    d.querySelector('button').addEventListener('click',()=>setBg(i));
+    box.appendChild(d);
+  });
 }
 function starPath(x,cx,cy,R){
   x.beginPath();
@@ -1197,12 +1336,9 @@ function render(tg,t){
   const cw=Math.max(1,Math.round(c.clientWidth*dpr)), ch=Math.max(1,Math.round(c.clientHeight*dpr));
   if(c.width!==cw) c.width=cw; if(c.height!==ch) c.height=ch;
   const x=c.getContext('2d'), W=cw, H=ch, G=scene.g, u=H/1000;
-  const sky=x.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0,'#03061a'); sky.addColorStop(0.45,'#0b1440'); sky.addColorStop(0.8,'#2a2257'); sky.addColorStop(1,'#3b2a55');
-  x.fillStyle=sky; x.fillRect(0,0,W,H);
-  x.fillStyle='#fff';
-  for(const s of STARS){ x.globalAlpha=(0.35+0.65*(0.5+0.5*Math.sin(t*s.sp+s.ph)))*0.9; x.beginPath(); x.arc(s.x*W,s.y*H,s.r*u*1.3,0,6.283); x.fill(); }
-  x.globalAlpha=1;
+  const BW=bgWeights(t);
+  if(BW.A){ drawSky(x,BW.A,W,H,t,u,1); drawSky(x,BW.B,W,H,t,u,BW.p); } else drawSky(x,BW.B,W,H,t,u,1);
+  const wOf=id=>(BW.B.id===id?BW.p:0)+(BW.A&&BW.A.id===id?1-BW.p:0)+(!BW.A&&BW.B.id===id?1-BW.p:0);
   // 베들레헴의 별
   const sx=W*0.5, sy=H*0.11, R=H*0.022*(1+0.06*Math.sin(t*1.6))*(1+G*0.35);
   const gr=R*7*(1+G*0.6), gl=x.createRadialGradient(sx,sy,0,sx,sy,gr);
@@ -1214,13 +1350,12 @@ function render(tg,t){
   const sg=x.createRadialGradient(sx,sy,0,sx,sy,R*3); sg.addColorStop(0,'#ffffff'); sg.addColorStop(0.35,'#fff2c4'); sg.addColorStop(1,'#f4c96b');
   x.fillStyle=sg; starPath(x,sx,sy,R); x.fill();
   // 언덕
-  x.fillStyle='#0d1233'; x.beginPath(); x.moveTo(0,H*HILL[0][1]);
-  for(const s of HILL) x.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); x.lineTo(W,H); x.lineTo(0,H); x.fill();
+  if(BW.A){ drawBackHill(x,BW.A,W,H,t,u,1); drawBackHill(x,BW.B,W,H,t,u,BW.p); } else drawBackHill(x,BW.B,W,H,t,u,1);
   // 트리 (언덕 위, 앞 언덕보다 뒤)
   const its=scene.items;
   const isIntro=it=>{ const el=t-it.introStart; return el>=0&&el<INTRO_HOLD+1.5; };
   for(const it of its) if(it.kind==='tree'&&!isIntro(it)) drawItem(x,it,W,H,t,G);
-  x.fillStyle='#080b22'; x.beginPath(); x.moveTo(0,H*0.93); x.quadraticCurveTo(W*0.3,H*0.88,W*0.5,H*0.95); x.quadraticCurveTo(W*0.75,H*1.0,W,H*0.9); x.lineTo(W,H); x.lineTo(0,H); x.fill();
+  if(BW.A){ drawFrontHill(x,BW.A,W,H,1); drawFrontHill(x,BW.B,W,H,BW.p); } else drawFrontHill(x,BW.B,W,H,1);
   // 마구간과 구유
   const cx=W*0.5, base=H*0.985, sw=H*0.34, sh=H*0.18, warm=0.55+0.45*G+0.05*Math.sin(t*2.2);
   glowAt(x,cx,base-sh*0.35,sw*(1+0.6*G),'255,196,110',0.28*warm);
@@ -1234,6 +1369,16 @@ function render(tg,t){
   for(let k=-4;k<=4;k++){ x.beginPath(); x.moveTo(cx+k*ow*0.06,base-oh*0.36); x.lineTo(cx+k*ow*0.075,base-oh*0.45); x.stroke(); }
   glowAt(x,cx,base-oh*0.43,ow*0.22,'255,250,230',1);
   // 문구
+  const wSnow=wOf('snow');
+  if(wSnow>0.01){ x.globalAlpha=wSnow; x.strokeStyle='#f4f7fc'; x.lineWidth=sh*0.07; x.lineJoin='round';
+    x.beginPath(); x.moveTo(cx-sw*0.55,base-sh*0.58); x.lineTo(cx,base-sh*0.99); x.lineTo(cx+sw*0.55,base-sh*0.58); x.stroke(); x.globalAlpha=1; }
+  drawSnow(x,W,H,t,u,wSnow);
+  if(S.bgCaption&&G<0.1){ const ct=t-scene.bg.capT, sc=SCENES[scene.bg.cur];
+    if(ct>0&&ct<10&&sc.cap){ x.globalAlpha=clamp(Math.min(ct/1.2,(10-ct)/1.5),0,1)*(1-G*10); x.textAlign='center'; x.textBaseline='middle';
+      let fz=H*0.036; x.font=`700 ${Math.round(fz)}px ${FONT}`; const mw=x.measureText(sc.cap).width; if(mw>W*0.86){ fz*=W*0.86/mw; x.font=`700 ${Math.round(fz)}px ${FONT}`; }
+      x.shadowColor='rgba(0,0,0,.65)'; x.shadowBlur=H*0.015; x.fillStyle='#fff8e6'; x.fillText(sc.cap,W/2,H*0.24);
+      x.font=`500 ${Math.round(H*0.024)}px ${FONT}`; x.fillStyle='rgba(255,230,180,.9)'; x.fillText(sc.capRef+' · '+sc.name,W/2,H*0.24+fz*1.05);
+      x.shadowBlur=0; x.globalAlpha=1; } }
   if(S.title){ x.globalAlpha=1-G; x.fillStyle='rgba(255,240,210,.92)'; x.font=`700 ${Math.round(H*0.04)}px ${FONT}`; x.textAlign='left'; x.textBaseline='top';
     x.shadowColor='rgba(0,0,0,.6)'; x.shadowBlur=H*0.01; x.fillText(S.title,W*0.035,H*0.045); x.shadowBlur=0; x.globalAlpha=1; }
   if(its.length){ x.fillStyle='rgba(255,240,210,.6)'; x.font=`500 ${Math.round(H*0.024)}px ${FONT}`; x.textAlign='right'; x.textBaseline='bottom'; x.fillText('도착한 선물 '+its.length+'개',W*0.97,H*0.97); }
@@ -1345,6 +1490,7 @@ function tick(id){
   scene.A=po?popupCanvas.clientWidth/Math.max(1,popupCanvas.clientHeight):inlineOn?inCanvas.clientWidth/Math.max(1,inCanvas.clientHeight):16/9;
   if(!isFinite(scene.A)||scene.A<=0) scene.A=16/9;
   if(dirHandle&&watching&&t-lastScan>2){ lastScan=t; scanFolder(); }
+  if((+S.bgEvery||0)>0 && !scene.gather && t-scene.bg.last>(+S.bgEvery)*60) nextBg();
   try{ drawPreview(); }catch(e){}
   update(t,dt);
   try{ render({c:mini,win:window,cap:1},t); }catch(e){}
@@ -1353,11 +1499,13 @@ function tick(id){
   (po?popup:window).requestAnimationFrame(()=>tick(id));
 }
 function kick(){ loopId++; const id=loopId; window.requestAnimationFrame(()=>tick(id)); }
-setInterval(()=>{ updatePopupStatus(); if(now()-lastTickAt>0.5) kick(); },500);
+let goneSig='';
+setInterval(()=>{ updatePopupStatus(); if(now()-lastTickAt>0.5) kick();
+  const sig=scene.items.filter(i=>i.hidden).map(i=>i.id).join(','); if(sig!==goneSig){ goneSig=sig; renderGallery(); } },500);
 
 window.__xmasTest={ kinds:()=>drawings.map(d=>d.kind),
   debug:async(url)=>{ const im=await loadImg(url); const w=fitCanvas(fitCanvas(im,1600),900); const r=paperCut(w); if(!r||r.paperFull) return 'nocut';
-    let cur={m:r.mask,w:r.w,h:r.h}, out=[]; for(let k=0;k<4;k++){ const f=shapeFeat(cur.m,cur.w,cur.h); out.push({k,notch:f.notch,maxPos:f.maxPos,a06:f.at(0.06),a2:f.at(0.2),a3:f.at(0.3),a7:f.at(0.7),a92:f.at(0.92),asp:f.aspect}); cur=rotMask(cur.m,cur.w,cur.h);} return {cls:classify(r.mask,r.w,r.h),out}; } };
+    let cur={m:r.mask,w:r.w,h:r.h}, out=[]; for(let k=0;k<4;k++){ const f=shapeFeat(cur.m,cur.w,cur.h); out.push({k,notch:f.notch,maxPos:f.maxPos,a06:f.at(0.06),a2:f.at(0.2),a3:f.at(0.3),a7:f.at(0.7),a92:f.at(0.92),asp:f.aspect,sl:f.symLin,tilt:f.tilt,bn:f.botNotch,low:f.lowMax,a05:f.at(0.05),a86:f.at(0.86),a97:f.at(0.97)}); cur=rotMask(cur.m,cur.w,cur.h);} return {cls:classify(r.mask,r.w,r.h),out}; } };
 
 /* ---------------- 시작 ---------------- */
 (async()=>{
@@ -1371,7 +1519,8 @@ window.__xmasTest={ kinds:()=>drawings.map(d=>d.kind),
       if(perm==='granted'){ watching=true; } else { watching=false; folderErr='새로고침 후에는 한 번 더 허락이 필요해요. ‘폴더 다시 연결’을 눌러 주세요.'; $('#btnResume').hidden=false; }
       updateFolderStatus(); }
   } else toast('이 브라우저에서는 자동 저장이 안 돼요. 행사 후 ‘백업 내보내기’를 꼭 해 주세요.',5000);
-  renderGallery(); listCams(); kick();
+  { const l=bgEnabled(); scene.bg.cur=l[0]; }
+  renderBgList(); renderGallery(); listCams(); kick();
   if(S.cloudOn&&parseCfg(S.fbCfg)) cloudConnect(true);
 })();
 })();

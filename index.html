@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>별빛 그림 전시 — 성탄 체험전시예배 운영 화면</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap">
 <style>
 :root{
   --bg:#0b1024; --card:#141a36; --line:#263063; --text:#eef0fb; --muted:#9aa3c7;
@@ -315,12 +316,21 @@ details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:
     <section class="card">
       <h2><span class="n">6</span> 화면 설정</h2>
       <div class="field">그림이 화면에 머무는 시간
-        <select id="lifeMin">
-          <option value="0">계속 머물기</option><option value="1">1분</option><option value="2">2분</option>
-          <option value="3">3분</option><option value="5">5분</option><option value="10">10분</option><option value="20">20분</option>
+        <select id="lifeSec">
+          <option value="0">계속 머물기</option><option value="20">20초</option><option value="30">30초</option><option value="45">45초</option>
+          <option value="60">1분</option><option value="120">2분</option><option value="300">5분</option>
         </select>
         <span class="hint" style="font-size:12px">시간이 지나면 하늘로 올라가며 사라집니다. 목록에는 남아 있고, 썸네일을 누르면 다시 나와요.</span>
       </div>
+      <div class="row" style="gap:14px;margin-bottom:10px">
+        <div class="field" style="margin:0;flex:1">늘 남겨 둘 그림 수 (최소)
+          <select id="minShow"><option value="0">0개</option><option value="3">3개</option><option value="5">5개</option><option value="8">8개</option><option value="10">10개</option><option value="12">12개</option></select>
+        </div>
+        <div class="field" style="margin:0;flex:1">화면에 띄울 최대 그림 수
+          <select id="maxShow"><option value="8">8개</option><option value="12">12개</option><option value="16">16개</option><option value="20">20개</option><option value="25">25개</option><option value="30">30개</option></select>
+        </div>
+      </div>
+      <p class="hint" style="font-size:12px;margin:-4px 0 10px">최소 개수보다 적게 남으면 시간이 지나도 사라지지 않아요. 최대 개수를 넘으면 시간이 남았어도 가장 먼저 들어온 그림부터 사라지고 새 그림이 들어옵니다.</p>
       <label class="chk"><input type="checkbox" id="gatherAll"> ‘구유로 모이기’ 때 사라진 그림도 모두 다시 불러오기</label>
       <div class="field" style="margin-top:14px">배경 자동으로 바꾸기
         <select id="bgEvery">
@@ -363,6 +373,7 @@ details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:
 'use strict';
 const $ = s => document.querySelector(s);
 const FONT = '"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+const SERIF = '"Gowun Batang","Nanum Myeongjo","AppleMyungjo","Batang",serif';
 const QS = new URLSearchParams(location.search);
 const FB_VER = '10.12.2';
 function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
@@ -455,8 +466,8 @@ const DEFAULTS = {
   verse:'우리가 동방에서 그의 별을 보고 그에게 경배하러 왔노라',
   ref:'마태복음 2:2',
   showNames:true, sound:true, thr:0.14, sticker:true, fillHoles:true, despeckle:true, edgeRemove:false,
-  mode:'paper', forceKind:'auto', fbCfg:'', baseUrl:'', room:'', showQR:true, cloudOn:false,
-  lifeMin:5, gatherAll:true, bgEvery:3, bgScenes:['night','snow','field','glory'], bgCaption:true,
+  mode:'paper', forceKind:'auto', fbCfg:'', baseUrl:'', room:'', showQR:false, cloudOn:false,
+  lifeSec:30, minShow:8, maxShow:16, ver:0, gatherAll:true, bgEvery:3, bgScenes:['night','snow','field','glory'], bgCaption:true,
   mT:6, mB:6, mL:6, mR:6, rot:0, mirror:false, camId:''
 };
 let S = Object.assign({}, DEFAULTS);
@@ -474,7 +485,8 @@ if(!S.room){ S.room=Math.random().toString(36).slice(2,8); saveS(); }
 if(!S.baseUrl && /^https?:$/.test(location.protocol)){ S.baseUrl=location.origin+location.pathname; }
 ['title','verse','ref','mode','forceKind','fbCfg','baseUrl'].forEach(k=>bind(k,k,'txt'));
 bind('showQR','showQR','chk');
-['lifeMin','bgEvery'].forEach(k=>bind(k,k,'txt'));
+if(S.ver!==3){ S.showQR=false; S.lifeSec=30; S.minShow=8; S.maxShow=16; S.ver=3; saveS(); }
+['lifeSec','minShow','maxShow','bgEvery'].forEach(k=>bind(k,k,'txt'));
 ['gatherAll','bgCaption'].forEach(k=>bind(k,k,'chk'));
 $('#rot').value = String(S.rot);
 $('#rot').addEventListener('change',()=>{ S.rot=parseInt($('#rot').value,10); saveS(); });
@@ -1195,12 +1207,15 @@ function angDiff(a){ return ((a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math
 function update(t,dt){
   scene.g+=((scene.gather?1:0)-scene.g)*(1-Math.exp(-dt*1.1));
   const G=scene.g, all=scene.items;
-  const life=(+S.lifeMin||0)*60, nowMs=Date.now();
-  for(const it of all){
-    const el=t-it.introStart, introish=el>-0.5&&el<INTRO_HOLD+0.5&&it.introStart>-50;
-    const gone=life>0 && (nowMs-it.liveFrom)/1000>life && !introish;
-    it.hidden = gone && !(scene.gather && S.gatherAll);
-  }
+  const life=+S.lifeSec||0, nowMs=Date.now(), maxN=Math.max(1,+S.maxShow||16), minN=Math.min(+S.minShow||0,maxN);
+  const rank=[...all].sort((a,b)=>b.liveFrom-a.liveFrom);
+  rank.forEach((it,i)=>{
+    const el=t-it.introStart, introish=(el>-60&&el<INTRO_HOLD+0.5&&it.introStart>-50);
+    const expired=life>0 && (nowMs-it.liveFrom)/1000>life;
+    let hide=!introish && (i>=maxN || (i>=minN && expired));
+    if(scene.gather && S.gatherAll) hide=false;
+    it.hidden=hide;
+  });
   for(const it of all){ if(!it.hidden) continue;
     if(!it.leftBurst){ it.leftBurst=true; if(it.a>0.3) sparkleAt(it.cx,it.cy,it.kind); }
     const f=1-Math.exp(-dt*0.9);
@@ -1209,7 +1224,7 @@ function update(t,dt){
   const items=all.filter(i=>!i.hidden); items.forEach(i=>i.leftBurst=false);
   const trees=items.filter(i=>i.kind==='tree'), stars=items.filter(i=>i.kind==='star');
   const others=items.filter(i=>i.kind!=='tree'&&i.kind!=='star').sort((a,b)=>a.hx-b.hx);
-  const fs=floatSize(items.length-trees.length), ts0=treeSize(trees.length);
+  const fs=clamp(0.25/Math.sqrt(Math.max(1,(+S.maxShow||16)/6)),0.09,0.22), ts0=fs;
   const lay=gatherLayout(others.length,scene.A), band=starBand(stars.length,scene.A);
   const gpos=new Map(); others.forEach((it,i)=>gpos.set(it,lay.pos[i]));
   [...stars].sort((a,b)=>Math.abs(a.hx-0.5)-Math.abs(b.hx-0.5)).forEach((it,i)=>gpos.set(it,band.pos[i]));
@@ -1217,11 +1232,11 @@ function update(t,dt){
     const el=t-it.introStart, intro=el>=0&&el<INTRO_HOLD, after=el>=INTRO_HOLD&&el<INTRO_HOLD+3;
     let fx,fy,fsz,frot,fa=1;
     switch(it.kind){
-      case 'star': fx=it.hx+it.ax*0.5*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*0.5*Math.sin(t*it.fy+it.py); fsz=fs*0.72*it.sv; frot=t*it.spin; break;
-      case 'heart': fx=it.hx+it.ax*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*Math.sin(t*it.fy+it.py); fsz=fs*0.9*it.sv; frot=0.07*Math.sin(t*0.5+it.rp); break;
-      case 'tree': fsz=ts0*it.sv; fx=it.hx; fy=ground(it.hx)+0.012-fsz*it.hRatio/2; frot=0.035*Math.sin(t*0.9+it.rp); break;
-      case 'circle': { const cyc=(t*it.vs+it.hy)%0.74; fy=0.82-cyc; fx=it.hx+0.03*Math.sin(t*0.4+it.px); fsz=fs*0.8*it.sv; frot=0.06*Math.sin(t*0.6+it.rp); fa=clamp(Math.min(cyc/0.06,(0.74-cyc)/0.1),0,1); break; }
-      default: fx=it.hx+it.ax*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*Math.sin(t*it.fy+it.py); fsz=fs*it.sv; frot=0.09*Math.sin(t*0.45+it.rp);
+      case 'star': fx=it.hx+it.ax*0.5*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*0.5*Math.sin(t*it.fy+it.py); fsz=fs; frot=t*it.spin; break;
+      case 'heart': fx=it.hx+it.ax*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*Math.sin(t*it.fy+it.py); fsz=fs; frot=0.07*Math.sin(t*0.5+it.rp); break;
+      case 'tree': fsz=ts0; fx=it.hx; fy=ground(it.hx)+0.012-fsz*it.hRatio/2; frot=0.035*Math.sin(t*0.9+it.rp); break;
+      case 'circle': { const cyc=(t*it.vs+it.hy)%0.74; fy=0.82-cyc; fx=it.hx+0.03*Math.sin(t*0.4+it.px); fsz=fs; frot=0.06*Math.sin(t*0.6+it.rp); fa=clamp(Math.min(cyc/0.06,(0.74-cyc)/0.1),0,1); break; }
+      default: fx=it.hx+it.ax*Math.sin(t*it.fx+it.px); fy=it.hy+it.ay*Math.sin(t*it.fy+it.py); fsz=fs; frot=0.09*Math.sin(t*0.45+it.rp);
     }
     const gp=gpos.get(it);
     let tx=fx,ty=fy,ts=fsz,tr=frot,ta=fa,k=after?2.2:1.8;
@@ -1268,46 +1283,229 @@ function setBg(i){ const b=scene.bg; if(i===b.cur) return; b.prev=b.cur; b.cur=i
 function nextBg(){ const l=bgEnabled(); const pos=l.indexOf(scene.bg.cur); const n=l[(pos+1)%l.length]; if(n!==scene.bg.cur) setBg(n); else scene.bg.last=now(); }
 function bgWeights(t){ const b=scene.bg, p=b.prev<0?1:clamp((t-b.tx)/BG_FADE,0,1); return {p, A:b.prev>=0&&p<1?SCENES[b.prev]:null, B:SCENES[b.cur]}; }
 function hillPath(x,W,H){ x.beginPath(); x.moveTo(0,H*HILL[0][1]); for(const s of HILL) x.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); x.lineTo(W,H); x.lineTo(0,H); x.closePath(); }
-function drawSky(x,S0,W,H,t,u,al){
-  if(al<=0) return;
-  x.globalAlpha=al; const g=x.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,S0.sky[0]); g.addColorStop(0.45,S0.sky[1]); g.addColorStop(0.8,S0.sky[2]); g.addColorStop(1,S0.sky[3]);
-  x.fillStyle=g; x.fillRect(0,0,W,H);
-  if(S0.stars>0){ x.fillStyle='#fff'; for(const s of STARS){ x.globalAlpha=al*S0.stars*(0.35+0.65*(0.5+0.5*Math.sin(t*s.sp+s.ph)))*0.9; x.beginPath(); x.arc(s.x*W,s.y*H,s.r*u*1.3,0,6.283); x.fill(); } }
-  if(S0.id==='glory'){
-    x.save(); x.translate(W*0.5,-H*0.08);
-    for(let k=0;k<15;k++){ const an=Math.PI/2+(k-7)*0.12+0.025*Math.sin(t*0.25+k); x.globalAlpha=al*0.07*(0.6+0.4*Math.sin(t*0.5+k*1.7));
-      x.fillStyle='#ffe6b0'; x.beginPath(); x.moveTo(0,0); x.lineTo(Math.cos(an-0.035)*H*1.4,Math.sin(an-0.035)*H*1.4); x.lineTo(Math.cos(an+0.035)*H*1.4,Math.sin(an+0.035)*H*1.4); x.closePath(); x.fill(); }
-    x.restore();
-    for(const m of MOTES){ const yy=((m.y-t*m.sp)%1+1)%1; x.globalAlpha=al; glowAt(x,(m.x+0.01*Math.sin(t+m.ph))*W,yy*H*0.85,m.r*u*5,'255,225,160',0.5*(0.5+0.5*Math.sin(t*2+m.ph))); }
-  }
-  x.globalAlpha=1;
+/* ---------------- 그림 같은 배경 (한 번 그려서 저장) ---------------- */
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function noise1(seed){ const r=mulberry(seed), L=Array.from({length:512},()=>r());
+  return v=>{ const i=Math.floor(v), f=v-i, a=L[((i%512)+512)%512], b=L[(((i+1)%512)+512)%512], u=f*f*(3-2*f); return a+(b-a)*u; }; }
+function mkCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function ridgeYs(r,W,base,amp,freq){ const n=noise1(Math.floor(r()*1e9)), ys=[];
+  for(let x=0;x<=W+4;x+=4){ let v=0,a=1,f=freq,s=0; for(let o=0;o<5;o++){ v+=(n(x*f+o*37.7)-0.5)*a; s+=a; a*=0.5; f*=2.05; } ys.push(base+amp*v/s*2.4); }
+  const at=x=>ys[clamp(Math.round(x/4),0,ys.length-1)]; return {ys,at}; }
+function ridgePath(c,R,W,H){ c.beginPath(); c.moveTo(0,H); R.ys.forEach((y,i)=>c.lineTo(i*4,y)); c.lineTo(W,H); c.closePath(); }
+function ridgeLine(c,R){ c.beginPath(); R.ys.forEach((y,i)=>i?c.lineTo(i*4,y):c.moveTo(0,y)); }
+function drawRidge(c,R,W,H,top,bot,rim,rimW){
+  const ymin=Math.min(...R.ys); const g=c.createLinearGradient(0,ymin,0,H); g.addColorStop(0,top); g.addColorStop(1,bot);
+  ridgePath(c,R,W,H); c.fillStyle=g; c.fill();
+  if(rim){ c.save(); ridgeLine(c,R); c.strokeStyle=rim; c.lineWidth=rimW||2; c.stroke(); c.restore(); }
 }
-function drawBackHill(x,S0,W,H,t,u,al){
-  if(al<=0) return;
-  x.globalAlpha=al; x.fillStyle=S0.back; hillPath(x,W,H); x.fill();
-  if(S0.id==='snow'){
-    for(const hx of [0.07,0.15,0.86,0.94]){ const gy=ground(hx)*H+H*0.01, hw=H*0.06, hh=H*0.05, X=hx*W;
-      x.fillStyle='#3a3552'; x.fillRect(X-hw/2,gy-hh,hw,hh);
-      x.fillStyle='#f4f7fc'; x.beginPath(); x.moveTo(X-hw*0.62,gy-hh); x.lineTo(X,gy-hh*1.75); x.lineTo(X+hw*0.62,gy-hh); x.closePath(); x.fill();
-      x.fillStyle='rgba(255,210,120,.95)'; x.fillRect(X-hw*0.15,gy-hh*0.7,hw*0.3,hh*0.35);
-      x.globalAlpha=al; glowAt(x,X,gy-hh*0.5,hw*0.9,'255,200,110',0.25); x.globalAlpha=al; }
-  }
-  if(S0.id==='field'){
-    for(const hx of [0.08,0.14,0.2,0.79,0.85,0.92]){ const gy=ground(hx)*H+H*0.004, X=hx*W, bw=H*0.034, bh=H*0.02, bob=Math.sin(t*0.8+hx*20)*H*0.002;
-      x.fillStyle='rgba(215,220,228,.88)'; x.beginPath(); x.ellipse(X,gy-bh+bob,bw/2,bh/2,0,0,6.283); x.fill();
-      x.fillStyle='#2a2f38'; x.beginPath(); x.ellipse(X+bw*0.55,gy-bh*1.1+bob,bw*0.17,bh*0.32,0.3,0,6.283); x.fill();
-      x.fillRect(X-bw*0.25,gy-bh*0.6,bw*0.07,bh*0.6); x.fillRect(X+bw*0.2,gy-bh*0.6,bw*0.07,bh*0.6); }
-    const fx=0.31*W, fy=ground(0.31)*H+H*0.006, fl=0.8+0.2*Math.sin(t*9)+0.1*Math.sin(t*23);
-    glowAt(x,fx,fy-H*0.02,H*0.12*fl,'255,150,60',0.35);
-    x.fillStyle=`rgba(255,${170+Math.round(40*fl)},80,.95)`; x.beginPath(); x.moveTo(fx-H*0.012,fy); x.quadraticCurveTo(fx,fy-H*0.05*fl,fx+H*0.012,fy); x.closePath(); x.fill();
-  }
-  x.globalAlpha=1;
+function vgrad(c,W,H,stops){ const g=c.createLinearGradient(0,0,0,H); stops.forEach(s=>g.addColorStop(s[0],s[1])); c.fillStyle=g; c.fillRect(0,0,W,H); }
+function blob(c,x,y,r,col,a){ const g=c.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,`rgba(${col},${a})`); g.addColorStop(1,`rgba(${col},0)`); c.fillStyle=g; c.fillRect(x-r,y-r,r*2,r*2); }
+function gauss(r){ return (r()+r()+r()+r()-2)/2; }
+function starDust(c,r,W,H,n,band,yMax,amax){
+  for(let i=0;i<n;i++){ let x,y;
+    if(band){ const u=r(); x=u*W; y=(band[0]+(band[1]-band[0])*u)*H+gauss(r)*H*band[2]; } else { x=r()*W; y=Math.pow(r(),1.4)*yMax*H; }
+    const s=0.4+Math.pow(r(),3)*1.6; c.fillStyle=`rgba(${r()<0.2?'255,230,200':r()<0.2?'200,215,255':'255,255,255'},${(0.2+r()*0.8)*amax})`;
+    c.beginPath(); c.arc(x,y,s,0,6.283); c.fill(); }
 }
-function drawFrontHill(x,S0,W,H,al){
-  if(al<=0) return; x.globalAlpha=al; x.fillStyle=S0.front;
-  x.beginPath(); x.moveTo(0,H*0.93); x.quadraticCurveTo(W*0.3,H*0.88,W*0.5,H*0.95); x.quadraticCurveTo(W*0.75,H*1.0,W,H*0.9); x.lineTo(W,H); x.lineTo(0,H); x.fill(); x.globalAlpha=1;
+function brightStar(c,x,y,s){ blob(c,x,y,s*7,'210,225,255',0.22); c.strokeStyle='rgba(235,240,255,.55)'; c.lineWidth=0.8;
+  c.beginPath(); c.moveTo(x-s*5,y); c.lineTo(x+s*5,y); c.moveTo(x,y-s*5); c.lineTo(x,y+s*5); c.stroke(); c.fillStyle='#fff'; c.beginPath(); c.arc(x,y,s*0.9,0,6.283); c.fill(); }
+function strokes(c,clip,r,n,box,cols,len,ang,al,lw){
+  c.save(); clip(); c.clip();
+  for(let i=0;i<n;i++){ const x=box[0]+r()*(box[2]-box[0]), y=box[1]+r()*(box[3]-box[1]), L=len[0]+r()*(len[1]-len[0]), a=ang+(r()-0.5)*0.6;
+    c.globalAlpha=al*(0.4+r()*0.6); c.strokeStyle=cols[Math.floor(r()*cols.length)]; c.lineWidth=lw*(0.6+r()*0.8);
+    c.beginPath(); c.moveTo(x,y); c.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L); c.stroke(); }
+  c.restore(); c.globalAlpha=1;
 }
+function palm(c,x,y,s,col){ c.strokeStyle=col; c.fillStyle=col; c.lineCap='round'; c.lineWidth=3.2*s;
+  c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(x+8*s,y-34*s,x+3*s,y-66*s); c.stroke();
+  const tx=x+3*s, ty=y-66*s; c.lineWidth=2.4*s;
+  for(let k=0;k<8;k++){ const a=-Math.PI/2+(k-3.5)*0.42; const ex=tx+Math.cos(a)*38*s, ey=ty+Math.sin(a)*16*s+16*s;
+    c.beginPath(); c.moveTo(tx,ty); c.quadraticCurveTo(tx+Math.cos(a)*22*s,ty+Math.sin(a)*22*s-8*s,ex,ey); c.stroke(); }
+}
+function olive(c,r,x,y,s,col){ c.fillStyle=col; c.strokeStyle=col; c.lineWidth=3*s; c.beginPath(); c.moveTo(x,y); c.lineTo(x+2*s,y-18*s); c.stroke();
+  for(let k=0;k<7;k++){ c.beginPath(); c.ellipse(x+(r()-0.5)*30*s,y-24*s-r()*14*s,(10+r()*8)*s,(7+r()*5)*s,0,0,6.283); c.fill(); } }
+function pine(c,x,y,s,col,snow){ for(let k=0;k<3;k++){ const yy=y-k*14*s, w=(22-k*5)*s; c.fillStyle=col; c.beginPath(); c.moveTo(x-w,yy); c.lineTo(x,yy-24*s); c.lineTo(x+w,yy); c.closePath(); c.fill();
+  if(snow){ c.fillStyle=snow; c.beginPath(); c.moveTo(x-w*0.45,yy-13*s); c.lineTo(x,yy-24*s); c.lineTo(x+w*0.45,yy-13*s); c.quadraticCurveTo(x,yy-17*s,x-w*0.45,yy-13*s); c.fill(); } }
+  c.fillStyle=col; c.fillRect(x-2*s,y,4*s,6*s); }
+function sheep(c,r,x,y,s,wool,dark){ c.fillStyle=dark; c.fillRect(x-7*s,y-4*s,2.2*s,8*s); c.fillRect(x+5*s,y-4*s,2.2*s,8*s);
+  for(let k=0;k<9;k++){ c.fillStyle=wool; c.beginPath(); c.arc(x+(r()-0.5)*18*s,y-8*s+(r()-0.5)*7*s,(4+r()*2.5)*s,0,6.283); c.fill(); }
+  c.fillStyle=dark; c.beginPath(); c.ellipse(x+12*s,y-10*s,3.6*s,5*s,0.5,0,6.283); c.fill(); }
+function cloudBank(c,r,x,y,w,h,lit,shade,n){
+  // 아래쪽 그늘 → 위쪽 빛 순서로 작은 뭉게구름을 겹쳐 그림
+  const puffs=[]; for(let i=0;i<n*3;i++){ const u=(r()-0.5), cx=x+u*w, prof=1-Math.pow(Math.abs(u)*2,2), cy=y-prof*h*0.55*r()+ (r()-0.5)*h*0.25, rad=(0.025+r()*0.045)*w*(0.6+prof*0.6); puffs.push({cx,cy,rad}); }
+  puffs.sort((a,b)=>b.cy-a.cy);
+  for(const p0 of puffs){ const g=c.createRadialGradient(p0.cx,p0.cy-p0.rad*0.45,p0.rad*0.1,p0.cx,p0.cy,p0.rad);
+    g.addColorStop(0,lit); g.addColorStop(0.75,shade); g.addColorStop(1,shade.replace(/[\d.]+\)$/,'0)'));
+    c.globalAlpha=0.5+r()*0.35; c.fillStyle=g; c.beginPath(); c.arc(p0.cx,p0.cy,p0.rad,0,6.283); c.fill(); }
+  c.globalAlpha=1;
+}
+function house(c,r,x,y,w,h,o){
+  c.fillStyle=o.wall; c.fillRect(x,y-h,w,h+6);
+  if(o.gable){ c.beginPath(); c.moveTo(x-w*0.12,y-h); c.lineTo(x+w/2,y-h-w*0.55); c.lineTo(x+w*1.12,y-h); c.closePath(); c.fillStyle=o.roof||o.wall; c.fill();
+    if(o.snow){ c.fillStyle=o.snow; c.beginPath(); c.moveTo(x-w*0.14,y-h+2); c.lineTo(x+w/2,y-h-w*0.58); c.lineTo(x+w*1.14,y-h+2); c.lineTo(x+w*1.05,y-h+5); c.lineTo(x+w/2,y-h-w*0.48); c.lineTo(x-w*0.05,y-h+5); c.closePath(); c.fill(); } }
+  else { c.fillStyle=o.wall; c.fillRect(x-1,y-h-3,w+2,3); if(r()<0.3){ c.fillRect(x+w*0.15,y-h-w*0.3,w*0.25,w*0.3); } }
+  const rows=Math.max(1,Math.floor(h/14)), cols=Math.max(1,Math.floor(w/12));
+  for(let i=0;i<rows;i++) for(let j=0;j<cols;j++){ if(r()<o.litP){ const wx=x+4+j*(w-8)/cols+2, wy=y-h+5+i*(h-8)/rows;
+    c.fillStyle=o.lit; c.fillRect(wx,wy,Math.max(2.5,w/cols*0.35),Math.max(3,h/rows*0.38)); if(r()<0.35) blob(c,wx+2,wy+2,10,o.glow,0.25); } }
+}
+function town(c,r,x0,x1,yAt,sc,o){
+  let x=x0; while(x<x1){ const w=(20+r()*30)*sc, h=(o.gable?14+r()*14:16+r()*34)*sc, y=yAt(x+w/2)+5*sc;
+    if(o.tower&&r()<0.08){ house(c,r,x,y,w*0.7,h*2.2,o); } else house(c,r,x,y,w,h,o);
+    x+=w*(0.55+r()*0.5); if(o.palms&&r()<0.18){ palm(c,x,yAt(x)+6*sc,0.55*sc,o.wall); } }
+}
+function chapel(c,x,y,s,o){ const w=46*s,h=34*s; house(c,mulberry(5),x-w/2,y,w,h,{...o,litP:0.9});
+  c.fillStyle=o.wall; c.fillRect(x-7*s,y-h-60*s,14*s,40*s); c.beginPath(); c.moveTo(x-10*s,y-h-60*s); c.lineTo(x,y-h-82*s); c.lineTo(x+10*s,y-h-60*s); c.closePath(); c.fill();
+  if(o.snow){ c.fillStyle=o.snow; c.beginPath(); c.moveTo(x-10*s,y-h-60*s); c.lineTo(x,y-h-82*s); c.lineTo(x+10*s,y-h-60*s); c.lineTo(x,y-h-74*s); c.closePath(); c.fill(); }
+  c.strokeStyle=o.cross||'#ffd98a'; c.lineWidth=2.4*s; c.beginPath(); c.moveTo(x,y-h-82*s); c.lineTo(x,y-h-100*s); c.moveTo(x-6*s,y-h-94*s); c.lineTo(x+6*s,y-h-94*s); c.stroke();
+  c.fillStyle=o.lit; c.fillRect(x-3*s,y-h-50*s,6*s,9*s); blob(c,x,y-h-46*s,22*s,o.glow,0.35);
+}
+let GRAIN=null;
+function grainCanvas(){ if(GRAIN) return GRAIN; const c=mkCanvas(256,256), x=c.getContext('2d'), im=x.createImageData(256,256), r=mulberry(11);
+  for(let i=0;i<im.data.length;i+=4){ const v=110+r()*36; im.data[i]=im.data[i+1]=im.data[i+2]=v; im.data[i+3]=255; } x.putImageData(im,0,0); return GRAIN=c; }
+function canvasTexture(c,W,H,al,mode){ c.save(); c.globalAlpha=al; c.globalCompositeOperation=mode; c.fillStyle=c.createPattern(grainCanvas(),'repeat'); c.fillRect(0,0,W,H); c.restore(); }
+
+const PAINTERS={
+  night(c,f,W,H,r,hillP,hillTop,frontP){
+    vgrad(c,W,H,[[0,'#03071a'],[0.3,'#091640'],[0.58,'#1c2c63'],[0.76,'#3a3b74'],[0.9,'#6a5378'],[1,'#8e6a74']]);
+    blob(c,W*0.5,H*0.9,W*0.6,'255,170,120',0.12);
+    for(let i=0;i<70;i++){ const u=r(); blob(c,u*W,(0.62-0.52*u)*H+gauss(r)*H*0.07,H*(0.06+r()*0.12),r()<0.5?'150,170,255':'205,160,235',0.04); }
+    starDust(c,r,W,H,2200,[0.62,0.1,0.05],0,0.8); starDust(c,r,W,H,1100,null,0.75,0.9);
+    for(let i=0;i<34;i++) brightStar(c,r()*W,Math.pow(r(),1.3)*H*0.6,0.9+r()*1.2);
+    const R1=ridgeYs(r,W,H*0.70,H*0.11,0.0022); drawRidge(c,R1,W,H,'#33447f','#1d2758','rgba(170,190,255,.28)',2);
+    for(let i=0;i<16;i++) blob(c,r()*W,H*(0.73+r()*0.04),H*0.14,'130,150,215',0.07);
+    const R2=ridgeYs(r,W,H*0.765,H*0.05,0.0035); drawRidge(c,R2,W,H,'#1f2a5c','#141c45','rgba(150,170,240,.22)',1.5);
+    town(c,r,W*0.02,W*0.31,R2.at,1.15,{wall:'#0e1434',lit:'#ffcf7d',glow:'255,190,110',litP:0.32,tower:true,palms:true});
+    town(c,r,W*0.74,W*0.95,R2.at,0.8,{wall:'#111839',lit:'#ffc874',glow:'255,190,110',litP:0.25,palms:true});
+    for(let i=0;i<5;i++){ const xx=W*(0.36+r()*0.3); olive(c,r,xx,R2.at(xx)+6,0.9,'#121a40'); }
+    hillP(c); { const g=c.createLinearGradient(0,H*0.76,0,H); g.addColorStop(0,'#1d2a5e'); g.addColorStop(1,'#0a1132'); c.fillStyle=g; c.fill(); }
+    strokes(c,()=>hillP(c),r,3200,[0,H*0.75,W,H],['#2b3b7a','#0e163f','#3a4f95','#18245a'],[6,16],-Math.PI/2,0.45,1.6);
+    hillTop(c); c.strokeStyle='rgba(170,190,255,.32)'; c.lineWidth=3; c.stroke();
+    frontP(f); { const g=f.createLinearGradient(0,H*0.88,0,H); g.addColorStop(0,'#0c1131'); g.addColorStop(1,'#04061a'); f.fillStyle=g; f.fill(); }
+    strokes(f,()=>frontP(f),r,1400,[0,H*0.87,W,H],['#1a2352','#060a24','#232e66'],[8,22],-Math.PI/2,0.5,2);
+    for(let i=0;i<7;i++){ const xx=r()*W; if(Math.abs(xx-W/2)<W*0.15) continue; const yy=H*(0.95+r()*0.04); f.fillStyle='#090d28'; f.beginPath(); f.ellipse(xx,yy,14+r()*18,8+r()*8,0,0,6.283); f.fill(); f.fillStyle='rgba(120,140,210,.18)'; f.beginPath(); f.ellipse(xx-4,yy-5,8,3,0,0,6.283); f.fill(); }
+  },
+  snow(c,f,W,H,r,hillP,hillTop,frontP){
+    vgrad(c,W,H,[[0,'#0d1836'],[0.35,'#1f3361'],[0.65,'#47608f'],[0.85,'#8296bb'],[1,'#b7c3d8']]);
+    starDust(c,r,W,H,500,null,0.35,0.6);
+    const mx=W*0.8, my=H*0.17, mr=H*0.055; blob(c,mx,my,mr*7,'220,230,255',0.22); blob(c,mx,my,mr*2.5,'235,240,255',0.35);
+    { const g=c.createRadialGradient(mx-mr*0.3,my-mr*0.3,0,mx,my,mr); g.addColorStop(0,'#fffef6'); g.addColorStop(1,'#d9deea'); c.fillStyle=g; c.beginPath(); c.arc(mx,my,mr,0,6.283); c.fill();
+      c.fillStyle='rgba(170,180,200,.25)'; [[0.3,-0.2,0.18],[-0.25,0.25,0.14],[0.1,0.35,0.1]].forEach(([a,b,s])=>{ c.beginPath(); c.arc(mx+a*mr,my+b*mr,s*mr,0,6.283); c.fill(); }); }
+    cloudBank(c,r,W*0.68,H*0.25,W*0.42,H*0.1,'rgba(225,232,248,.75)','rgba(80,100,145,.55)',26);
+    cloudBank(c,r,W*0.22,H*0.33,W*0.36,H*0.08,'rgba(190,205,235,.6)','rgba(60,80,125,.5)',20);
+    const R1=ridgeYs(r,W,H*0.66,H*0.12,0.0025); drawRidge(c,R1,W,H,'#c3cfe3','#7a8db0','rgba(255,255,255,.7)',2.5);
+    strokes(c,()=>ridgePath(c,R1,W,H),r,900,[0,H*0.5,W,H*0.8],['rgba(90,110,160,.6)','rgba(255,255,255,.8)'],[10,30],2.2,0.35,1.5);
+    for(let i=0;i<14;i++) blob(c,r()*W,H*(0.72+r()*0.03),H*0.12,'215,225,245',0.1);
+    const R2=ridgeYs(r,W,H*0.76,H*0.045,0.004); drawRidge(c,R2,W,H,'#9fb0cf','#7f92b6','rgba(255,255,255,.6)',2);
+    for(let x=0;x<W;x+=9+r()*14){ if(x>W*0.22&&x<W*0.7&&r()<0.75) continue; pine(c,x,R2.at(x)+6,0.6+r()*0.5,'#2d3d5f','#eef3fb'); }
+    town(c,r,W*0.04,W*0.24,R2.at,1.1,{wall:'#4a4363',roof:'#3b3555',snow:'#f2f6fc',gable:true,lit:'#ffd284',glow:'255,200,120',litP:0.5});
+    town(c,r,W*0.72,W*0.96,R2.at,1.0,{wall:'#4a4363',roof:'#3b3555',snow:'#f2f6fc',gable:true,lit:'#ffd284',glow:'255,200,120',litP:0.5});
+    chapel(c,W*0.15,R2.at(W*0.15)+6,1.2,{wall:'#504868',snow:'#f2f6fc',lit:'#ffd284',glow:'255,200,120',gable:true,roof:'#3b3555',cross:'#ffe3a0'});
+    hillP(c); { const g=c.createLinearGradient(0,H*0.76,0,H); g.addColorStop(0,'#eef3fb'); g.addColorStop(1,'#b5c4dc'); c.fillStyle=g; c.fill(); }
+    strokes(c,()=>hillP(c),r,1600,[0,H*0.76,W,H],['rgba(140,160,205,.7)','rgba(255,255,255,.9)','rgba(170,190,225,.7)'],[14,40],0.15,0.35,2);
+    for(let i=0;i<260;i++){ const xx=r()*W, yy=H*(0.8+r()*0.2); c.fillStyle=`rgba(255,255,255,${0.4+r()*0.6})`; c.fillRect(xx,yy,1.5,1.5); }
+    hillTop(c); c.strokeStyle='rgba(255,255,255,.9)'; c.lineWidth=3; c.stroke();
+    frontP(f); { const g=f.createLinearGradient(0,H*0.88,0,H); g.addColorStop(0,'#f6f9fe'); g.addColorStop(1,'#c4d1e6'); f.fillStyle=g; f.fill(); }
+    strokes(f,()=>frontP(f),r,700,[0,H*0.88,W,H],['rgba(150,170,210,.6)','rgba(255,255,255,1)'],[20,60],0.08,0.35,2.5);
+  },
+  field(c,f,W,H,r,hillP,hillTop,frontP){
+    vgrad(c,W,H,[[0,'#020a12'],[0.35,'#062033'],[0.65,'#0f3a4c'],[0.85,'#1f5560'],[1,'#3a6a6a']]);
+    for(let i=0;i<50;i++){ const u=r(); blob(c,u*W,(0.15+0.35*u)*H+gauss(r)*H*0.06,H*(0.05+r()*0.1),'120,200,210',0.035); }
+    starDust(c,r,W,H,1800,[0.15,0.5,0.05],0,0.8); starDust(c,r,W,H,900,null,0.7,0.9);
+    for(let i=0;i<26;i++) brightStar(c,r()*W,Math.pow(r(),1.3)*H*0.55,0.9+r()*1.1);
+    const mx=W*0.12, my=H*0.2, mr=H*0.04; blob(c,mx,my,mr*8,'200,235,230',0.18);
+    { c.fillStyle='#f3f6e8'; c.beginPath(); c.arc(mx,my,mr,0,6.283); c.fill(); c.fillStyle='#062033'; c.beginPath(); c.arc(mx+mr*0.45,my-mr*0.15,mr*0.92,0,6.283); c.fill(); }
+    const R1=ridgeYs(r,W,H*0.69,H*0.08,0.0018); drawRidge(c,R1,W,H,'#1d4a4c','#123437','rgba(160,220,210,.22)',2);
+    for(let i=0;i<14;i++) blob(c,r()*W,H*(0.73+r()*0.04),H*0.12,'120,180,180',0.07);
+    const R2=ridgeYs(r,W,H*0.75,H*0.05,0.003); drawRidge(c,R2,W,H,'#173f3a','#0f2e2b','rgba(150,210,190,.2)',1.5);
+    for(let k=0;k<3;k++){ c.strokeStyle='rgba(30,70,64,.9)'; c.setLineDash([5,4]); c.lineWidth=3; c.beginPath(); const y0=H*(0.79+k*0.012);
+      for(let x=0;x<W;x+=20){ const yy=R2.at(x)+12+k*10; x?c.lineTo(x,yy):c.moveTo(x,yy); } c.stroke(); } c.setLineDash([]);
+    for(let i=0;i<7;i++){ const xx=W*(r()<0.5?0.03+r()*0.3:0.66+r()*0.3); olive(c,r,xx,R2.at(xx)+8,1.1,'#0c2724'); }
+    for(let i=0;i<20;i++){ const xx=W*(r()<0.5?0.04+r()*0.3:0.66+r()*0.3); sheep(c,r,xx,R2.at(xx)+14+r()*10,0.7,'rgba(220,226,222,.85)','#1d2b2a'); }
+    hillP(c); { const g=c.createLinearGradient(0,H*0.76,0,H); g.addColorStop(0,'#1c4a3c'); g.addColorStop(1,'#0a2420'); c.fillStyle=g; c.fill(); }
+    strokes(c,()=>hillP(c),r,3600,[0,H*0.75,W,H],['#2c6b52','#0f3329','#3d7d5f','#1a4a3b'],[6,18],-Math.PI/2,0.5,1.6);
+    hillTop(c); c.strokeStyle='rgba(170,230,200,.25)'; c.lineWidth=3; c.stroke();
+    const fx=W*0.31, fy=H*ground(0.31)+H*0.006;
+    blob(c,fx,fy,H*0.16,'255,150,70',0.18);
+    [[-1,0.9],[1,1.05]].forEach(([sd,s])=>{ const px=fx+sd*H*0.045, py=fy; c.fillStyle='#0a1a17';
+      c.beginPath(); c.ellipse(px,py-H*0.022*s,H*0.012*s,H*0.022*s,0,0,6.283); c.fill(); c.beginPath(); c.arc(px,py-H*0.05*s,H*0.009*s,0,6.283); c.fill();
+      c.strokeStyle='#0a1a17'; c.lineWidth=2.5; c.beginPath(); c.moveTo(px+sd*H*0.014,py); c.lineTo(px+sd*H*0.02,py-H*0.075*s); c.quadraticCurveTo(px+sd*H*0.03,py-H*0.085*s,px+sd*H*0.02,py-H*0.09*s); c.stroke(); });
+    c.fillStyle='#3a2a20'; for(let k=-2;k<=2;k++){ c.beginPath(); c.ellipse(fx+k*H*0.008,fy+2,H*0.006,H*0.004,0,0,6.283); c.fill(); }
+    frontP(f); { const g=f.createLinearGradient(0,H*0.88,0,H); g.addColorStop(0,'#0c2a24'); g.addColorStop(1,'#031210'); f.fillStyle=g; f.fill(); }
+    strokes(f,()=>frontP(f),r,2000,[0,H*0.87,W,H],['#1e5444','#071d18','#2d6a55'],[10,26],-Math.PI/2,0.55,2);
+    for(let i=0;i<40;i++){ const xx=r()*W, yy=H*(0.94+r()*0.05); f.fillStyle=r()<0.5?'rgba(255,240,200,.6)':'rgba(220,200,255,.5)'; f.beginPath(); f.arc(xx,yy,1.6,0,6.283); f.fill(); }
+  },
+  glory(c,f,W,H,r,hillP,hillTop,frontP){
+    vgrad(c,W,H,[[0,'#1b1442'],[0.28,'#4a2a68'],[0.52,'#9a4c78'],[0.72,'#de7c72'],[0.88,'#f4ad72'],[1,'#ffd49a']]);
+    blob(c,W*0.5,-H*0.05,H*0.9,'255,240,210',0.35); blob(c,W*0.5,H*0.05,H*0.45,'255,250,235',0.35);
+    starDust(c,r,W,H,500,null,0.3,0.6);
+    cloudBank(c,r,W*0.2,H*0.47,W*0.46,H*0.14,'rgba(255,224,185,.95)','rgba(150,72,112,.75)',30);
+    cloudBank(c,r,W*0.8,H*0.42,W*0.42,H*0.14,'rgba(255,224,185,.95)','rgba(150,72,112,.75)',28);
+    cloudBank(c,r,W*0.5,H*0.62,W*1.0,H*0.07,'rgba(255,200,160,.75)','rgba(160,80,115,.6)',34);
+    for(let i=0;i<14;i++) blob(c,r()*W,H*(0.6+r()*0.1),H*0.1,'255,220,180',0.12);
+    const R1=ridgeYs(r,W,H*0.7,H*0.08,0.0022); drawRidge(c,R1,W,H,'#7a4470','#4e2a52','rgba(255,200,160,.45)',2.5);
+    const R2=ridgeYs(r,W,H*0.765,H*0.045,0.0035); drawRidge(c,R2,W,H,'#4a2850','#331a3c','rgba(255,190,150,.35)',2);
+    town(c,r,W*0.03,W*0.28,R2.at,0.9,{wall:'#2b1736',lit:'#ffd890',glow:'255,200,130',litP:0.25,palms:true});
+    town(c,r,W*0.76,W*0.96,R2.at,0.8,{wall:'#2b1736',lit:'#ffd890',glow:'255,200,130',litP:0.25,palms:true});
+    hillP(c); { const g=c.createLinearGradient(0,H*0.76,0,H); g.addColorStop(0,'#40214a'); g.addColorStop(1,'#1d0f26'); c.fillStyle=g; c.fill(); }
+    strokes(c,()=>hillP(c),r,2600,[0,H*0.75,W,H],['#5a2f5e','#2a1534','#6e3c66'],[6,16],-Math.PI/2,0.45,1.6);
+    hillTop(c); c.strokeStyle='rgba(255,190,150,.5)'; c.lineWidth=3; c.stroke();
+    frontP(f); { const g=f.createLinearGradient(0,H*0.88,0,H); g.addColorStop(0,'#24112c'); g.addColorStop(1,'#0d0612'); f.fillStyle=g; f.fill(); }
+    strokes(f,()=>frontP(f),r,1300,[0,H*0.87,W,H],['#3a1d44','#12081a'],[8,22],-Math.PI/2,0.5,2);
+  }
+};
+const PAINT=new Map();
+function paintScene(id,A){
+  const W=1920, H=Math.round(1920/A), back=mkCanvas(W,H), front=mkCanvas(W,H), c=back.getContext('2d'), f=front.getContext('2d');
+  const r=mulberry(id.split('').reduce((a,ch)=>a*31+ch.charCodeAt(0),7));
+  const hillP=ctx=>{ ctx.beginPath(); ctx.moveTo(0,H*HILL[0][1]); for(const s of HILL) ctx.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); };
+  const hillTop=ctx=>{ ctx.beginPath(); ctx.moveTo(0,H*HILL[0][1]); for(const s of HILL) ctx.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); };
+  const frontP=ctx=>{ ctx.beginPath(); ctx.moveTo(0,H*0.93); ctx.quadraticCurveTo(W*0.3,H*0.88,W*0.5,H*0.95); ctx.quadraticCurveTo(W*0.75,H*1.0,W,H*0.9); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); };
+  try{ PAINTERS[id](c,f,W,H,r,hillP,hillTop,frontP); }catch(e){ console.error(e); }
+  canvasTexture(c,W,H,0.22,'overlay'); canvasTexture(f,W,H,0.1,'source-atop');
+  return {back,front};
+}
+function getPaint(id,W,H){ const A=W/H, key=id+'|'+A.toFixed(2); let p=PAINT.get(key); if(!p){ p=paintScene(id,A); PAINT.set(key,p); } return p; }
+function prewarmPaint(){ const A=scene.A||16/9; let i=0; const step=()=>{ if(i>=SCENES.length) return; getPaint(SCENES[i].id,1600,Math.round(1600/A)); i++; setTimeout(step,60); }; setTimeout(step,200); }
+function drawStable(x,W,H,t,G,wSnow){
+  const cx=W*0.5, base=H*0.985, sw=H*0.36, sh=H*0.2, warm=0.6+0.4*G+0.06*Math.sin(t*2.2)+0.03*Math.sin(t*7.3);
+  glowAt(x,cx,base-sh*0.3,sw*(1.1+0.6*G),'255,190,110',0.32*warm);
+  glowAt(x,cx,base,sw*0.9,'255,200,120',0.25*warm);
+  const L=cx-sw*0.44, Rr=cx+sw*0.44, top=base-sh*0.6;
+  // 벽 (나무 판자)
+  x.fillStyle='#24170f'; x.fillRect(L,top,Rr-L,base-top);
+  x.strokeStyle='rgba(0,0,0,.35)'; x.lineWidth=Math.max(1,H*0.0015);
+  for(let k=1;k<9;k++){ const xx=L+(Rr-L)*k/9; x.beginPath(); x.moveTo(xx,top); x.lineTo(xx,base); x.stroke(); }
+  x.strokeStyle='rgba(255,190,120,.12)'; for(let k=1;k<9;k++){ const xx=L+(Rr-L)*k/9+1.5; x.beginPath(); x.moveTo(xx,top); x.lineTo(xx,base); x.stroke(); }
+  // 기둥
+  x.fillStyle='#1a100a'; [L-sw*0.02,cx-sw*0.26,cx+sw*0.23,Rr-sw*0.02].forEach(px=>x.fillRect(px,top-sh*0.02,sw*0.045,base-top+sh*0.02));
+  // 지붕 (짚)
+  x.fillStyle='#3a2716'; x.beginPath(); x.moveTo(cx-sw*0.6,top+sh*0.04); x.lineTo(cx,base-sh); x.lineTo(cx+sw*0.6,top+sh*0.04); x.lineTo(cx+sw*0.54,top+sh*0.08); x.lineTo(cx,base-sh*0.9); x.lineTo(cx-sw*0.54,top+sh*0.08); x.closePath(); x.fill();
+  x.strokeStyle='rgba(210,160,90,.35)'; x.lineWidth=Math.max(1,H*0.0016);
+  const lerp=(a,b,f)=>a+(b-a)*f;
+  [[-1],[1]].forEach(([sd])=>{ const Ax=cx, Ay=base-sh, A2y=base-sh*0.9, Ex=cx+sd*sw*0.6, Ey=top+sh*0.04, Ix=cx+sd*sw*0.54, Iy=top+sh*0.08;
+    for(let j=1;j<6;j++){ const f=j/6; x.beginPath(); x.moveTo(Ax,lerp(Ay,A2y,f)); x.lineTo(lerp(Ex,Ix,f),lerp(Ey,Iy,f)); x.stroke(); }
+    for(let j=0;j<18;j++){ const f=j/17, px=lerp(Ax,Ex,f), py=lerp(Ay,Ey,f); x.beginPath(); x.moveTo(px,py); x.lineTo(px+sd*H*0.002,py+sh*0.07); x.stroke(); } });
+  x.fillStyle='#2a1a0e'; x.fillRect(cx-sw*0.62,top+sh*0.02,sw*1.24,sh*0.035);
+  // 안쪽 빛
+  const ow=sw*0.48, oh=sh*0.52, og=x.createRadialGradient(cx,base-oh*0.3,0,cx,base-oh*0.3,ow*0.85);
+  og.addColorStop(0,`rgba(255,232,165,${0.98*Math.min(1,warm)})`); og.addColorStop(0.55,`rgba(236,156,72,${0.8*Math.min(1,warm)})`); og.addColorStop(1,'rgba(90,45,20,0.95)');
+  x.fillStyle=og; x.fillRect(cx-ow/2,base-oh,ow,oh);
+  // 빛줄기
+  x.save(); x.globalAlpha=0.16*warm; x.fillStyle='#ffd99a'; x.beginPath(); x.moveTo(cx-ow*0.5,base); x.lineTo(cx+ow*0.5,base); x.lineTo(cx+ow*1.1,H); x.lineTo(cx-ow*1.1,H); x.closePath(); x.fill(); x.restore();
+  // 등불
+  const lx=cx+ow*0.36, ly=base-oh*0.82; x.strokeStyle='#2a1a0e'; x.lineWidth=1.5; x.beginPath(); x.moveTo(lx,base-oh); x.lineTo(lx,ly-H*0.008); x.stroke();
+  glowAt(x,lx,ly,H*0.03,'255,210,130',0.8*warm); x.fillStyle='#ffe2a0'; x.fillRect(lx-H*0.0035,ly-H*0.006,H*0.007,H*0.011);
+  // 구유와 짚
+  x.fillStyle='#4a2c15'; x.beginPath(); x.moveTo(cx-ow*0.3,base-oh*0.34); x.lineTo(cx+ow*0.3,base-oh*0.34); x.lineTo(cx+ow*0.2,base-oh*0.02); x.lineTo(cx-ow*0.2,base-oh*0.02); x.closePath(); x.fill();
+  x.strokeStyle='#2a170a'; x.lineWidth=Math.max(1,H*0.002); x.beginPath(); x.moveTo(cx-ow*0.25,base-oh*0.02); x.lineTo(cx-ow*0.32,base); x.moveTo(cx+ow*0.25,base-oh*0.02); x.lineTo(cx+ow*0.32,base); x.stroke();
+  x.strokeStyle='rgba(255,214,120,.95)'; x.lineWidth=Math.max(1,H*0.0018);
+  for(let k=-6;k<=6;k++){ x.beginPath(); x.moveTo(cx+k*ow*0.045,base-oh*0.34); x.lineTo(cx+k*ow*0.055+Math.sin(k)*2,base-oh*0.44); x.stroke(); }
+  glowAt(x,cx,base-oh*0.42,ow*0.3,'255,250,230',0.95);
+  x.fillStyle='rgba(255,252,240,.95)'; x.beginPath(); x.ellipse(cx,base-oh*0.41,ow*0.11,ow*0.05,0,0,6.283); x.fill();
+  if(wSnow>0.01){ x.globalAlpha=wSnow; x.fillStyle='#f4f7fc';
+    x.beginPath(); x.moveTo(cx-sw*0.63,top+sh*0.05); x.lineTo(cx,base-sh*1.03); x.lineTo(cx+sw*0.63,top+sh*0.05); x.lineTo(cx+sw*0.56,top+sh*0.06); x.quadraticCurveTo(cx+sw*0.3,base-sh*0.86,cx,base-sh*0.95); x.quadraticCurveTo(cx-sw*0.3,base-sh*0.86,cx-sw*0.56,top+sh*0.06); x.closePath(); x.fill(); x.globalAlpha=1; }
+}
+
 function drawSnow(x,W,H,t,u,w){
   if(w<=0.01) return; x.fillStyle='#fff';
   for(const f of FLAKES){ const yy=((f.y+t*f.sp)%1.1)-0.05, xx=f.x+0.02*Math.sin(t*f.dr+f.ph); x.globalAlpha=w*0.85; x.beginPath(); x.arc(xx*W,yy*H,f.r*u*2.2,0,6.283); x.fill(); }
@@ -1337,8 +1535,25 @@ function render(tg,t){
   if(c.width!==cw) c.width=cw; if(c.height!==ch) c.height=ch;
   const x=c.getContext('2d'), W=cw, H=ch, G=scene.g, u=H/1000;
   const BW=bgWeights(t);
-  if(BW.A){ drawSky(x,BW.A,W,H,t,u,1); drawSky(x,BW.B,W,H,t,u,BW.p); } else drawSky(x,BW.B,W,H,t,u,1);
   const wOf=id=>(BW.B.id===id?BW.p:0)+(BW.A&&BW.A.id===id?1-BW.p:0)+(!BW.A&&BW.B.id===id?1-BW.p:0);
+  const PA=BW.A?getPaint(BW.A.id,W,H):null, PB=getPaint(BW.B.id,W,H);
+  if(PA){ x.drawImage(PA.back,0,0,W,H); x.globalAlpha=BW.p; x.drawImage(PB.back,0,0,W,H); x.globalAlpha=1; } else x.drawImage(PB.back,0,0,W,H);
+  // 반짝이는 별
+  const wSt=SCENES.reduce((a,sc)=>a+wOf(sc.id)*sc.stars,0);
+  if(wSt>0.02){ x.strokeStyle='#ffffff'; x.lineWidth=Math.max(1,H*0.0012); for(let i=0;i<60;i++){ const s0=STARS[i], tw=Math.sin(t*s0.sp*0.7+s0.ph); if(tw<0.55) continue; const a=wSt*(tw-0.55)*2.2, px=s0.x*W, py=s0.y*H*0.7, L=H*0.006*(1+s0.r*0.6)*tw;
+    x.globalAlpha=Math.min(1,a); x.beginPath(); x.moveTo(px-L,py); x.lineTo(px+L,py); x.moveTo(px,py-L); x.lineTo(px,py+L); x.stroke(); x.fillStyle='#fff'; x.beginPath(); x.arc(px,py,Math.max(1,H*0.0012),0,6.283); x.fill(); } x.globalAlpha=1; }
+  // 별똥별
+  const wSh=wOf('night')+wOf('field');
+  if(wSh>0.05){ const per=9, k=Math.floor(t/per), ph=(t%per); if(ph<1){ const rr=mulberry(k*977+3), x0=(0.15+rr()*0.6)*W, y0=(0.05+rr()*0.2)*H, dx=W*0.22, dy=H*0.1, p0=ph, p1=Math.max(0,ph-0.25);
+    const g=x.createLinearGradient(x0+dx*p1,y0+dy*p1,x0+dx*p0,y0+dy*p0); g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(1,`rgba(255,255,255,${0.8*wSh*(1-ph)})`);
+    x.strokeStyle=g; x.lineWidth=H*0.002; x.beginPath(); x.moveTo(x0+dx*p1,y0+dy*p1); x.lineTo(x0+dx*p0,y0+dy*p0); x.stroke(); } }
+  // 하늘 영광: 빛줄기와 빛가루
+  const wGl=wOf('glory');
+  if(wGl>0.02){ x.save(); x.translate(W*0.5,-H*0.08);
+    for(let k=0;k<15;k++){ const an=Math.PI/2+(k-7)*0.12+0.025*Math.sin(t*0.25+k); x.globalAlpha=wGl*0.06*(0.6+0.4*Math.sin(t*0.5+k*1.7)); x.fillStyle='#fff0c8';
+      x.beginPath(); x.moveTo(0,0); x.lineTo(Math.cos(an-0.035)*H*1.4,Math.sin(an-0.035)*H*1.4); x.lineTo(Math.cos(an+0.035)*H*1.4,Math.sin(an+0.035)*H*1.4); x.closePath(); x.fill(); }
+    x.restore(); x.globalAlpha=1;
+    for(const m of MOTES){ const yy=((m.y-t*m.sp)%1+1)%1; glowAt(x,(m.x+0.01*Math.sin(t+m.ph))*W,yy*H*0.85,m.r*u*5,'255,230,170',wGl*0.55*(0.5+0.5*Math.sin(t*2+m.ph))); } }
   // 베들레헴의 별
   const sx=W*0.5, sy=H*0.11, R=H*0.022*(1+0.06*Math.sin(t*1.6))*(1+G*0.35);
   const gr=R*7*(1+G*0.6), gl=x.createRadialGradient(sx,sy,0,sx,sy,gr);
@@ -1349,42 +1564,35 @@ function render(tg,t){
     x.fillStyle=bm; x.beginPath(); x.moveTo(sx-R*0.6,sy); x.lineTo(sx+R*0.6,sy); x.lineTo(sx+bw,by); x.lineTo(sx-bw,by); x.closePath(); x.fill(); }
   const sg=x.createRadialGradient(sx,sy,0,sx,sy,R*3); sg.addColorStop(0,'#ffffff'); sg.addColorStop(0.35,'#fff2c4'); sg.addColorStop(1,'#f4c96b');
   x.fillStyle=sg; starPath(x,sx,sy,R); x.fill();
-  // 언덕
-  if(BW.A){ drawBackHill(x,BW.A,W,H,t,u,1); drawBackHill(x,BW.B,W,H,t,u,BW.p); } else drawBackHill(x,BW.B,W,H,t,u,1);
+  // 목자들의 모닥불
+  const wFi=wOf('field');
+  if(wFi>0.02){ const fx=0.31*W, fy=ground(0.31)*H+H*0.004, fl=0.8+0.2*Math.sin(t*9)+0.1*Math.sin(t*23);
+    glowAt(x,fx,fy-H*0.02,H*0.13*fl,'255,150,60',0.4*wFi); x.globalAlpha=wFi;
+    x.fillStyle=`rgba(255,${150+Math.round(50*fl)},70,.95)`; x.beginPath(); x.moveTo(fx-H*0.013,fy); x.quadraticCurveTo(fx-H*0.004,fy-H*0.04*fl,fx,fy-H*0.055*fl); x.quadraticCurveTo(fx+H*0.006,fy-H*0.03*fl,fx+H*0.013,fy); x.closePath(); x.fill();
+    x.fillStyle='rgba(255,240,170,.9)'; x.beginPath(); x.moveTo(fx-H*0.006,fy); x.quadraticCurveTo(fx,fy-H*0.028*fl,fx+H*0.006,fy); x.closePath(); x.fill(); x.globalAlpha=1; }
   // 트리 (언덕 위, 앞 언덕보다 뒤)
   const its=scene.items;
   const isIntro=it=>{ const el=t-it.introStart; return el>=0&&el<INTRO_HOLD+1.5; };
   for(const it of its) if(it.kind==='tree'&&!isIntro(it)) drawItem(x,it,W,H,t,G);
-  if(BW.A){ drawFrontHill(x,BW.A,W,H,1); drawFrontHill(x,BW.B,W,H,BW.p); } else drawFrontHill(x,BW.B,W,H,1);
-  // 마구간과 구유
-  const cx=W*0.5, base=H*0.985, sw=H*0.34, sh=H*0.18, warm=0.55+0.45*G+0.05*Math.sin(t*2.2);
-  glowAt(x,cx,base-sh*0.35,sw*(1+0.6*G),'255,196,110',0.28*warm);
-  x.fillStyle='#120c24'; x.fillRect(cx-sw*0.42,base-sh*0.6,sw*0.84,sh*0.6);
-  x.fillStyle='#1b1334'; x.beginPath(); x.moveTo(cx-sw*0.56,base-sh*0.56); x.lineTo(cx,base-sh); x.lineTo(cx+sw*0.56,base-sh*0.56); x.lineTo(cx+sw*0.5,base-sh*0.52); x.lineTo(cx,base-sh*0.9); x.lineTo(cx-sw*0.5,base-sh*0.52); x.closePath(); x.fill();
-  const ow=sw*0.46, oh=sh*0.5, og=x.createRadialGradient(cx,base-oh*0.3,0,cx,base-oh*0.3,ow*0.8);
-  og.addColorStop(0,`rgba(255,226,150,${0.95*warm})`); og.addColorStop(0.6,`rgba(232,150,70,${0.75*warm})`); og.addColorStop(1,'rgba(120,60,30,0.9)');
-  x.fillStyle=og; x.fillRect(cx-ow/2,base-oh,ow,oh);
-  x.fillStyle='#3a2414'; x.beginPath(); x.moveTo(cx-ow*0.32,base-oh*0.36); x.lineTo(cx+ow*0.32,base-oh*0.36); x.lineTo(cx+ow*0.22,base-oh*0.02); x.lineTo(cx-ow*0.22,base-oh*0.02); x.closePath(); x.fill();
-  x.strokeStyle='rgba(255,210,110,.9)'; x.lineWidth=Math.max(1,H*0.002);
-  for(let k=-4;k<=4;k++){ x.beginPath(); x.moveTo(cx+k*ow*0.06,base-oh*0.36); x.lineTo(cx+k*ow*0.075,base-oh*0.45); x.stroke(); }
-  glowAt(x,cx,base-oh*0.43,ow*0.22,'255,250,230',1);
-  // 문구
+  if(PA){ x.drawImage(PA.front,0,0,W,H); x.globalAlpha=BW.p; x.drawImage(PB.front,0,0,W,H); x.globalAlpha=1; } else x.drawImage(PB.front,0,0,W,H);
   const wSnow=wOf('snow');
-  if(wSnow>0.01){ x.globalAlpha=wSnow; x.strokeStyle='#f4f7fc'; x.lineWidth=sh*0.07; x.lineJoin='round';
-    x.beginPath(); x.moveTo(cx-sw*0.55,base-sh*0.58); x.lineTo(cx,base-sh*0.99); x.lineTo(cx+sw*0.55,base-sh*0.58); x.stroke(); x.globalAlpha=1; }
+  drawStable(x,W,H,t,G,wSnow);
   drawSnow(x,W,H,t,u,wSnow);
+  // 액자 같은 가장자리 어둠
+  { const vg=x.createRadialGradient(W/2,H*0.45,Math.min(W,H)*0.45,W/2,H*0.45,Math.max(W,H)*0.75); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.42)'); x.fillStyle=vg; x.fillRect(0,0,W,H); }
   if(S.bgCaption&&G<0.1){ const ct=t-scene.bg.capT, sc=SCENES[scene.bg.cur];
     if(ct>0&&ct<10&&sc.cap){ x.globalAlpha=clamp(Math.min(ct/1.2,(10-ct)/1.5),0,1)*(1-G*10); x.textAlign='center'; x.textBaseline='middle';
-      let fz=H*0.036; x.font=`700 ${Math.round(fz)}px ${FONT}`; const mw=x.measureText(sc.cap).width; if(mw>W*0.86){ fz*=W*0.86/mw; x.font=`700 ${Math.round(fz)}px ${FONT}`; }
+      let fz=H*0.036; x.font=`700 ${Math.round(fz)}px ${SERIF}`; const mw=x.measureText(sc.cap).width; if(mw>W*0.86){ fz*=W*0.86/mw; x.font=`700 ${Math.round(fz)}px ${SERIF}`; }
       x.shadowColor='rgba(0,0,0,.65)'; x.shadowBlur=H*0.015; x.fillStyle='#fff8e6'; x.fillText(sc.cap,W/2,H*0.24);
       x.font=`500 ${Math.round(H*0.024)}px ${FONT}`; x.fillStyle='rgba(255,230,180,.9)'; x.fillText(sc.capRef+' · '+sc.name,W/2,H*0.24+fz*1.05);
       x.shadowBlur=0; x.globalAlpha=1; } }
-  if(S.title){ x.globalAlpha=1-G; x.fillStyle='rgba(255,240,210,.92)'; x.font=`700 ${Math.round(H*0.04)}px ${FONT}`; x.textAlign='left'; x.textBaseline='top';
-    x.shadowColor='rgba(0,0,0,.6)'; x.shadowBlur=H*0.01; x.fillText(S.title,W*0.035,H*0.045); x.shadowBlur=0; x.globalAlpha=1; }
+  if(S.title){ x.globalAlpha=1-G; x.fillStyle='rgba(255,240,210,.92)'; x.font=`700 ${Math.round(H*0.042)}px ${SERIF}`; x.textAlign='left'; x.textBaseline='top';
+    x.shadowColor='rgba(0,0,0,.6)'; x.shadowBlur=H*0.01; x.fillText(S.title,W*0.035,H*0.045); x.shadowBlur=0;
+    const tw=x.measureText(S.title).width; x.fillStyle='rgba(244,201,107,.7)'; x.fillRect(W*0.035,H*0.045+H*0.055,tw*0.35,Math.max(1,H*0.002)); x.globalAlpha=1; }
   if(its.length){ x.fillStyle='rgba(255,240,210,.6)'; x.font=`500 ${Math.round(H*0.024)}px ${FONT}`; x.textAlign='right'; x.textBaseline='bottom'; x.fillText('도착한 선물 '+its.length+'개',W*0.97,H*0.97); }
   if(G>0.02&&S.verse){
     x.globalAlpha=Math.min(1,G*1.2); x.textAlign='center'; x.textBaseline='middle';
-    let fsz=H*0.05; x.font=`700 ${Math.round(fsz)}px ${FONT}`; const mw=x.measureText(S.verse).width; if(mw>W*0.9){ fsz*=W*0.9/mw; x.font=`700 ${Math.round(fsz)}px ${FONT}`; }
+    let fsz=H*0.05; x.font=`700 ${Math.round(fsz)}px ${SERIF}`; const mw=x.measureText(S.verse).width; if(mw>W*0.9){ fsz*=W*0.9/mw; x.font=`700 ${Math.round(fsz)}px ${SERIF}`; }
     x.shadowColor='rgba(255,210,120,.8)'; x.shadowBlur=H*0.02; x.fillStyle='#fff8e6'; x.fillText(S.verse,W/2,H*0.235);
     x.shadowBlur=0; x.font=`500 ${Math.round(H*0.028)}px ${FONT}`; x.fillStyle='rgba(255,230,180,.85)'; if(S.ref) x.fillText(S.ref,W/2,H*0.235+fsz*0.95);
     x.globalAlpha=1;
@@ -1424,12 +1632,12 @@ function drawItem(x,it,W,H,t,G){
   else if(it.kind==='heart'&&it.pulse>0.005) glowAt(x,px,py,s*0.85,'255,130,170',it.pulse*5);
   x.save();
   if(it.kind==='tree'&&glow<0.5){
-    x.translate(px,py+dh/2); x.rotate(it.rot); x.drawImage(it.img,-dw/2,-dh,dw,dh);
+    x.translate(px,py+dh/2); x.rotate(it.rot); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=H*0.012; x.shadowOffsetY=H*0.005; x.drawImage(it.img,-dw/2,-dh,dw,dh); x.shadowBlur=0; x.shadowOffsetY=0;
     const lr=Math.max(1.5,s*0.022);
     for(const L of it.lights){ const tw=0.5+0.5*Math.sin(t*(2+G*2)+L.ph); x.globalAlpha=it.a*(0.35+0.65*tw);
       const lx=L.u*dw, ly=-dh+L.v*dh; glowAt(x,lx,ly,lr*3,L.c,0.6*tw); x.fillStyle=`rgb(${L.c})`; x.beginPath(); x.arc(lx,ly,lr,0,6.283); x.fill(); }
   } else {
-    x.translate(px,py); x.rotate(it.rot); x.drawImage(it.img,-dw/2,-dh/2,dw,dh);
+    x.translate(px,py); x.rotate(it.rot); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=H*0.014; x.shadowOffsetY=H*0.006; x.drawImage(it.img,-dw/2,-dh/2,dw,dh); x.shadowBlur=0; x.shadowOffsetY=0;
   }
   x.restore(); x.globalAlpha=1;
   if(S.showNames&&it.name&&s>H*0.04){
@@ -1447,7 +1655,7 @@ function openPopup(){
   popup=window.open('','xmasStarDisplay','width=1280,height=720');
   if(!popup){ toast('새 창이 차단되었어요. 주소창 오른쪽의 팝업 차단 아이콘을 눌러 ‘허용’해 주세요.',4500); return; }
   const d=popup.document; d.open();
-  d.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>★ 성탄 그림 전시</title><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;cursor:none}#h{position:fixed;left:50%;top:16px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.5);padding:8px 16px;border-radius:20px;font:14px sans-serif;transition:opacity 1s}</style></head><body><canvas id="c"></canvas><div id="h">이 창을 프로젝터 화면으로 옮긴 뒤 더블클릭하면 전체화면이 됩니다</div></body></html>');
+  d.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>★ 성탄 그림 전시</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap"><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;cursor:none}#h{position:fixed;left:50%;top:16px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.5);padding:8px 16px;border-radius:20px;font:14px sans-serif;transition:opacity 1s}</style></head><body><canvas id="c"></canvas><div id="h">이 창을 프로젝터 화면으로 옮긴 뒤 더블클릭하면 전체화면이 됩니다</div></body></html>');
   d.close();
   popupCanvas=d.getElementById('c');
   d.addEventListener('dblclick',()=>{ const el=d.documentElement; if(!d.fullscreenElement&&el.requestFullscreen) el.requestFullscreen().catch(()=>{}); else if(d.exitFullscreen) d.exitFullscreen().catch(()=>{}); });
@@ -1520,7 +1728,7 @@ window.__xmasTest={ kinds:()=>drawings.map(d=>d.kind),
       updateFolderStatus(); }
   } else toast('이 브라우저에서는 자동 저장이 안 돼요. 행사 후 ‘백업 내보내기’를 꼭 해 주세요.',5000);
   { const l=bgEnabled(); scene.bg.cur=l[0]; }
-  renderBgList(); renderGallery(); listCams(); kick();
+  renderBgList(); renderGallery(); listCams(); kick(); prewarmPaint();
   if(S.cloudOn&&parseCfg(S.fbCfg)) cloudConnect(true);
 })();
 })();

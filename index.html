@@ -154,7 +154,6 @@ details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:
           <div class="row" style="justify-content:center;margin-top:8px">
             <button class="btn ghost" id="btnCopyLink">🔗 링크 복사</button>
           </div>
-          <label class="chk" style="justify-content:center;width:100%;margin-top:6px"><input type="checkbox" id="showQR"> 전시 화면 구석에 QR 띄우기</label>
         </div>
       </div>
       <details>
@@ -339,6 +338,11 @@ details ol,details ul{margin:8px 0 4px;padding-left:20px;line-height:1.75;color:
         </select>
       </div>
       <div class="bgList" id="bgList"></div>
+      <div class="row" style="margin-bottom:8px">
+        <label class="btn ghost" style="display:inline-block">🖼 내 배경 이미지 추가<input type="file" id="bgIn" accept="image/*" multiple hidden></label>
+        <label class="chk"><input type="checkbox" id="stableOnCustom"> 내 배경에서도 마구간 보이기</label>
+      </div>
+      <p class="hint" style="font-size:12px;margin:-2px 0 10px">직접 만들었거나 사용 허락을 받은 이미지를 넣으세요. 천천히 확대·이동하는 움직임과 빛가루가 더해집니다.</p>
       <label class="chk"><input type="checkbox" id="bgCaption"> 배경이 바뀔 때 그 장면의 말씀 띄우기</label>
       <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
       <div class="field">화면 제목<input type="text" id="title"></div>
@@ -467,7 +471,7 @@ const DEFAULTS = {
   ref:'마태복음 2:2',
   showNames:true, sound:true, thr:0.14, sticker:true, fillHoles:true, despeckle:true, edgeRemove:false,
   mode:'paper', forceKind:'auto', fbCfg:'', baseUrl:'', room:'', showQR:false, cloudOn:false,
-  lifeSec:30, minShow:8, maxShow:16, ver:0, gatherAll:true, bgEvery:3, bgScenes:['night','snow','field','glory'], bgCaption:true,
+  lifeSec:30, minShow:8, maxShow:16, ver:0, gatherAll:true, bgEvery:3, bgScenes:['paper','blue','night','snow'], bgCaption:true, stableOnCustom:false,
   mT:6, mB:6, mL:6, mR:6, rot:0, mirror:false, camId:''
 };
 let S = Object.assign({}, DEFAULTS);
@@ -484,10 +488,11 @@ function bind(id, key, type){
 if(!S.room){ S.room=Math.random().toString(36).slice(2,8); saveS(); }
 if(!S.baseUrl && /^https?:$/.test(location.protocol)){ S.baseUrl=location.origin+location.pathname; }
 ['title','verse','ref','mode','forceKind','fbCfg','baseUrl'].forEach(k=>bind(k,k,'txt'));
-bind('showQR','showQR','chk');
-if(S.ver!==3){ S.showQR=false; S.lifeSec=30; S.minShow=8; S.maxShow=16; S.ver=3; saveS(); }
+
+if((S.ver||0)<3){ S.lifeSec=30; S.minShow=8; S.maxShow=16; }
+if((S.ver||0)<4){ S.bgScenes=['paper','blue','night','snow']; S.ver=4; saveS(); }
 ['lifeSec','minShow','maxShow','bgEvery'].forEach(k=>bind(k,k,'txt'));
-['gatherAll','bgCaption'].forEach(k=>bind(k,k,'chk'));
+['gatherAll','bgCaption','stableOnCustom'].forEach(k=>bind(k,k,'chk'));
 $('#rot').value = String(S.rot);
 $('#rot').addEventListener('change',()=>{ S.rot=parseInt($('#rot').value,10); saveS(); });
 function onSetting(k){ if(k==='thr') $('#thrVal').textContent = '('+Math.round(S.thr*100)+')'; }
@@ -1265,6 +1270,10 @@ function burst(kind){
 }
 /* ---------------- 배경 장면 ---------------- */
 const SCENES=[
+  {id:'paper', name:'종이 공예 성탄', sky:['#2f7568','#2b6c5f','#3d8a77','#245d52'], stars:0,
+   cap:'오늘 다윗의 동네에 너희를 위하여 구주가 나셨으니 곧 그리스도 주시니라', capRef:'누가복음 2:11'},
+  {id:'blue', name:'푸른 성탄의 밤', sky:['#060b3a','#2149cf','#3d72f5','#122a93'], stars:0.4,
+   cap:'참 빛 곧 세상에 와서 각 사람에게 비추는 빛이 있었나니', capRef:'요한복음 1:9'},
   {id:'night', name:'베들레헴의 밤', sky:['#03061a','#0b1440','#2a2257','#3b2a55'], stars:1,   back:'#0d1233', front:'#080b22',
    cap:'동방에서 보던 그 별이 문득 앞서 인도하여 가다가 아기 있는 곳 위에 머물러 서 있는지라', capRef:'마태복음 2:9'},
   {id:'snow',  name:'눈 내리는 밤', sky:['#0a1430','#1b2b55','#3b4f7c','#5f7398'], stars:0.45, back:'#7f93b6', front:'#b9c7dc',
@@ -1453,6 +1462,167 @@ const PAINTERS={
     strokes(f,()=>frontP(f),r,1300,[0,H*0.87,W,H],['#3a1d44','#12081a'],[8,22],-Math.PI/2,0.5,2);
   }
 };
+/* ---------- 종이 공예·푸른 밤 장면 도구 ---------- */
+function paperStarShape(x,cx,cy,R,n,L,D,inner){
+  const r0=R*(inner||0.4);
+  for(let k=0;k<n;k++){ const a=-Math.PI/2+k*2*Math.PI/n, al=a-Math.PI/n, ar=a+Math.PI/n;
+    const tx=cx+Math.cos(a)*R, ty=cy+Math.sin(a)*R, lx=cx+Math.cos(al)*r0, ly=cy+Math.sin(al)*r0, rx=cx+Math.cos(ar)*r0, ry=cy+Math.sin(ar)*r0;
+    x.fillStyle=L; x.beginPath(); x.moveTo(cx,cy); x.lineTo(lx,ly); x.lineTo(tx,ty); x.closePath(); x.fill();
+    x.fillStyle=D; x.beginPath(); x.moveTo(cx,cy); x.lineTo(tx,ty); x.lineTo(rx,ry); x.closePath(); x.fill(); }
+}
+function paperStarSprite(R,n,L,D){ const s=Math.ceil(R*2.8), c=mkCanvas(s,s), x=c.getContext('2d');
+  x.save(); x.shadowColor='rgba(0,0,0,.38)'; x.shadowBlur=R*0.3; x.shadowOffsetX=R*0.08; x.shadowOffsetY=R*0.1; paperStarShape(x,s/2,s/2,R,n,L,D); x.restore();
+  paperStarShape(x,s/2,s/2,R,n,L,D); paperStarShape(x,s/2,s/2,R*0.42,n,D,L,0.45);
+  return c; }
+function paperTree(x,cx,base,h,L,D){ const tiers=4;
+  x.save(); x.shadowColor='rgba(0,0,0,.35)'; x.shadowBlur=h*0.06; x.shadowOffsetX=h*0.03; x.shadowOffsetY=h*0.02;
+  for(let k=0;k<tiers;k++){ const f=k/tiers, top=base-h+f*h*0.62, bot=top+h*0.42, w=h*(0.16+f*0.16);
+    x.fillStyle=L; x.beginPath(); x.moveTo(cx,top); x.lineTo(cx-w,bot); x.lineTo(cx,bot-h*0.03); x.closePath(); x.fill();
+    x.fillStyle=D; x.beginPath(); x.moveTo(cx,top); x.lineTo(cx,bot-h*0.03); x.lineTo(cx+w,bot); x.closePath(); x.fill(); }
+  x.restore(); x.fillStyle='#8a5a3a'; x.fillRect(cx-h*0.03,base-h*0.08,h*0.06,h*0.08);
+}
+function paperHouse(x,cx,base,w,h,o){
+  x.save(); x.shadowColor='rgba(0,0,0,.35)'; x.shadowBlur=w*0.2; x.shadowOffsetX=w*0.08;
+  x.fillStyle=o.wallL; x.fillRect(cx-w/2,base-h,w*0.62,h); x.fillStyle=o.wallD; x.fillRect(cx-w/2+w*0.62,base-h,w*0.38,h);
+  if(o.tower){ x.fillStyle=o.roofL; x.beginPath(); x.moveTo(cx-w*0.58,base-h); x.lineTo(cx,base-h-w*1.1); x.lineTo(cx,base-h); x.closePath(); x.fill();
+    x.fillStyle=o.roofD; x.beginPath(); x.moveTo(cx,base-h-w*1.1); x.lineTo(cx+w*0.58,base-h); x.lineTo(cx,base-h); x.closePath(); x.fill(); }
+  else { x.fillStyle=o.roofL; x.beginPath(); x.moveTo(cx-w*0.6,base-h); x.lineTo(cx-w*0.1,base-h-w*0.45); x.lineTo(cx+w*0.6,base-h-w*0.45); x.lineTo(cx+w*0.62,base-h); x.closePath(); x.fill();
+    x.fillStyle=o.roofD; x.fillRect(cx-w*0.6,base-h-2,w*1.22,4); }
+  x.restore();
+  x.fillStyle=o.win; const ww=Math.max(3,w*0.14); x.fillRect(cx-w*0.25,base-h*0.6,ww,ww*1.4); if(w>30) x.fillRect(cx+w*0.05,base-h*0.6,ww,ww*1.4);
+  blob(x,cx-w*0.1,base-h*0.5,w*0.5,'255,200,120',0.18);
+  if(o.tower){ paperStarShape(x,cx,base-h-w*1.18,w*0.14,5,'#f6e2ae','#d8b46a'); }
+}
+function paperFigure(x,cx,base,h,o){
+  const w=h*0.4;
+  x.save(); x.shadowColor='rgba(0,0,0,.4)'; x.shadowBlur=h*0.06; x.shadowOffsetX=h*0.03; x.shadowOffsetY=h*0.015;
+  x.fillStyle=o.robeL; x.beginPath(); x.moveTo(cx-w*0.17,base-h*0.76); x.lineTo(cx,base-h*0.78); x.lineTo(cx,base); x.lineTo(cx-w*0.5,base); x.closePath(); x.fill();
+  x.fillStyle=o.robeD; x.beginPath(); x.moveTo(cx,base-h*0.78); x.lineTo(cx+w*0.17,base-h*0.76); x.lineTo(cx+w*0.5,base); x.lineTo(cx,base); x.closePath(); x.fill();
+  x.restore();
+  x.fillStyle=o.inner; x.beginPath(); x.moveTo(cx-w*0.07,base-h*0.62); x.lineTo(cx+w*0.07,base-h*0.62); x.lineTo(cx+w*0.13,base); x.lineTo(cx-w*0.13,base); x.closePath(); x.fill();
+  // 망토 주름
+  x.strokeStyle='rgba(0,0,0,.12)'; x.lineWidth=Math.max(1,h*0.006); for(const fx of [-0.32,-0.2,0.22,0.34]){ x.beginPath(); x.moveTo(cx+fx*w*0.4,base-h*0.6); x.lineTo(cx+fx*w,base); x.stroke(); }
+  // 두건과 얼굴
+  x.fillStyle=o.hoodL; x.beginPath(); x.ellipse(cx,base-h*0.83,w*0.23,h*0.125,0,Math.PI*0.5,Math.PI*1.5); x.fill();
+  x.fillStyle=o.hoodD; x.beginPath(); x.ellipse(cx,base-h*0.83,w*0.23,h*0.125,0,-Math.PI*0.5,Math.PI*0.5); x.fill();
+  x.fillStyle='#ebc7a0'; x.beginPath(); x.ellipse(cx,base-h*0.825,w*0.12,h*0.07,0,0,6.283); x.fill();
+  x.fillStyle='rgba(120,70,40,.18)'; x.beginPath(); x.ellipse(cx,base-h*0.825,w*0.12,h*0.07,0,-Math.PI*0.5,Math.PI*0.5); x.fill();
+  if(o.beard){ x.fillStyle=o.beard; x.beginPath(); x.moveTo(cx-w*0.12,base-h*0.815); x.quadraticCurveTo(cx-w*0.11,base-h*0.73,cx,base-h*0.715); x.quadraticCurveTo(cx+w*0.11,base-h*0.73,cx+w*0.12,base-h*0.815); x.quadraticCurveTo(cx,base-h*0.79,cx-w*0.12,base-h*0.815); x.fill(); }
+  // 모은 손
+  x.fillStyle='#ebc7a0'; x.beginPath(); x.ellipse(cx,base-h*0.55,w*0.06,h*0.035,0,0,6.283); x.fill();
+  if(o.staff){ x.strokeStyle=o.staff; x.lineWidth=h*0.018; x.lineCap='round'; x.beginPath(); x.moveTo(cx+w*0.5,base); x.lineTo(cx+w*0.46,base-h*0.98);
+    x.arc(cx+w*0.39,base-h*0.98,w*0.07,0,Math.PI,true); x.stroke(); }
+}
+function sparkleSprite(R,col){ const s=Math.ceil(R*2.2), c=mkCanvas(s,s), x=c.getContext('2d'), m=s/2;
+  const rays=[[0,1],[Math.PI/2,1],[Math.PI,1],[Math.PI*1.5,1],[Math.PI/4,0.55],[Math.PI*0.75,0.55],[Math.PI*1.25,0.55],[Math.PI*1.75,0.55],[Math.PI/8,0.3],[Math.PI*0.62,0.3],[Math.PI*1.12,0.3],[Math.PI*1.62,0.3]];
+  for(const [a,l] of rays){ const g=x.createLinearGradient(m,m,m+Math.cos(a)*R*l,m+Math.sin(a)*R*l); g.addColorStop(0,`rgba(${col},.9)`); g.addColorStop(1,`rgba(${col},0)`);
+    x.strokeStyle=g; x.lineWidth=Math.max(1,R*0.025); x.beginPath(); x.moveTo(m,m); x.lineTo(m+Math.cos(a)*R*l,m+Math.sin(a)*R*l); x.stroke(); }
+  blob(x,m,m,R*0.25,col,0.6); x.fillStyle='#fff'; x.beginPath(); x.arc(m,m,Math.max(1,R*0.04),0,6.283); x.fill();
+  return c; }
+function scribbleTree(Wt,Ht,seed){ const c=mkCanvas(Wt,Ht), x=c.getContext('2d'), r=mulberry(seed), cx=Wt/2, top=Ht*0.1, base=Ht*0.98, maxW=Wt*0.46;
+  x.strokeStyle='rgba(255,255,255,.93)'; x.lineCap='round';
+  for(let i=0;i<120;i++){ const f=Math.pow(i/119,0.92), y=top+f*(base-top)+(r()-0.5)*8, hw=maxW*(0.04+0.96*f)*(0.85+r()*0.2);
+    x.lineWidth=1.6+r()*1.6; x.globalAlpha=0.7+r()*0.3; x.beginPath(); x.ellipse(cx+(r()-0.5)*hw*0.12,y,hw,hw*0.1+5,(r()-0.5)*0.22,r()*6.28,r()*6.28+5.2); x.stroke(); }
+  x.globalAlpha=1; return c; }
+function tornEdgePath(ctx,W,H,r,yFn,amp){ ctx.beginPath(); ctx.moveTo(0,H); for(let px=0;px<=W;px+=5){ ctx.lineTo(px,yFn(px)+(r()-0.5)*amp); } ctx.lineTo(W,H); ctx.closePath(); }
+
+PAINTERS.paper=function(c,f,W,H,r,hillP,hillTop,frontP){
+  vgrad(c,W,H,[[0,'#2f7568'],[0.55,'#2b6c5f'],[1,'#245d52']]);
+  for(let i=0;i<22;i++){ const ax=r()*W, ay=r()*H*0.55; c.fillStyle=r()<0.5?`rgba(255,255,255,${0.02+r()*0.035})`:`rgba(0,25,20,${0.03+r()*0.06})`;
+    c.beginPath(); c.moveTo(ax,ay); c.lineTo(ax+(r()-0.5)*W*0.8,ay+(0.15+r()*0.5)*H); c.lineTo(ax+(r()-0.5)*W*0.8,ay+(0.15+r()*0.5)*H); c.closePath(); c.fill(); }
+  c.strokeStyle='rgba(255,255,255,.06)'; c.lineWidth=1.5; for(let i=0;i<10;i++){ c.beginPath(); c.moveTo(r()*W,0); c.lineTo(r()*W,H*0.7); c.stroke(); }
+  const W2=Math.round(W*1.06), off=W*0.03;
+  const defs=[{top:0.26,var:0.14,L:'#4a9a86',D:'#337565',n:7,sp:0.05,amp:0.006,bw:[0.1,0.17]},{top:0.42,var:0.12,L:'#3d8a77',D:'#286556',n:9,sp:0.07,amp:0.01,bw:[0.08,0.14]},{top:0.56,var:0.1,L:'#327d6c',D:'#1f564a',n:12,sp:0.09,amp:0.015,bw:[0.06,0.11]}];
+  const layers=defs.map(d=>{ const lc=mkCanvas(W2,H), x=lc.getContext('2d'); x.translate(off,0);
+    const pk=[]; for(let i=0;i<d.n;i++) pk.push({px:(-0.1+1.2*(i+0.2+r()*0.6)/d.n)*W, ay:H*(d.top+r()*d.var), bw:(d.bw[0]+r()*(d.bw[1]-d.bw[0]))*W});
+    pk.sort((a,b)=>a.ay-b.ay);
+    for(const p of pk){ x.save(); x.shadowColor='rgba(0,0,0,.32)'; x.shadowBlur=26; x.shadowOffsetX=12; x.shadowOffsetY=4;
+      x.fillStyle=d.L; x.beginPath(); x.moveTo(p.px,p.ay); x.lineTo(p.px-p.bw,H); x.lineTo(p.px,H); x.closePath(); x.fill(); x.restore();
+      x.fillStyle=d.D; x.beginPath(); x.moveTo(p.px,p.ay); x.lineTo(p.px,H); x.lineTo(p.px+p.bw,H); x.closePath(); x.fill();
+      x.fillStyle=d.L; x.beginPath(); x.moveTo(p.px,p.ay); x.lineTo(p.px-p.bw,H); x.lineTo(p.px,H); x.closePath(); x.fill();
+      x.strokeStyle='rgba(255,255,255,.12)'; x.lineWidth=1.2; x.beginPath(); x.moveTo(p.px,p.ay); x.lineTo(p.px,H); x.stroke(); }
+    x.setTransform(1,0,0,1,0,0); canvasTexture(x,W2,H,0.12,'source-atop');
+    return {c:lc,sp:d.sp,amp:d.amp,ph:r()*6.28}; });
+  // 매달린 종이 별
+  const stars=[];
+  [[0.07,0.2,0.065,8],[0.26,0.1,0.042,8],[0.64,0.16,0.05,8],[0.79,0.07,0.06,8],[0.93,0.24,0.042,8]].forEach(([sx,sy,sr,n])=>stars.push({x:sx,y:sy,R:sr,hang:true,spr:paperStarSprite(sr*H,n,'#f2dcab','#c9a465'),sp:0.5+r()*0.4,ph:r()*6.28}));
+  for(let i=0;i<12;i++){ const sr=0.012+r()*0.02; stars.push({x:0.04+r()*0.92,y:0.04+r()*0.36,R:sr,hang:false,spr:paperStarSprite(sr*H,r()<0.5?8:6,'#efd59f','#c39d5c'),sp:0.3+r()*0.5,ph:r()*6.28}); }
+  // 언덕 (종이 한 장)
+  const hc=mkCanvas(W,H), h=hc.getContext('2d');
+  h.save(); h.shadowColor='rgba(0,0,0,.45)'; h.shadowBlur=34; h.shadowOffsetY=-8; hillP(h); { const g=h.createLinearGradient(0,H*0.76,0,H); g.addColorStop(0,'#246653'); g.addColorStop(1,'#163f35'); h.fillStyle=g; } h.fill(); h.restore();
+  hillTop(h); h.strokeStyle='rgba(170,230,200,.35)'; h.lineWidth=2.5; h.stroke();
+  const wall={wallL:'#f1e4c6',wallD:'#d6c39b',roofL:'#c96d3e',roofD:'#9c4e2b',win:'#ffd27a'};
+  for(const [x0,x1] of [[0.03,0.3],[0.71,0.97]]){ let xx=x0*W; while(xx<x1*W){ const w=(26+r()*22), tower=r()<0.22; paperHouse(h,xx,ground(xx/W)*H+6,w,tower?w*1.3:w*(0.7+r()*0.4),{...wall,tower}); xx+=w*(1.15+r()*0.7); } }
+  canvasTexture(h,W,H,0.12,'source-atop');
+  // 앞 언덕, 종이 트리, 종이 인형
+  f.save(); f.shadowColor='rgba(0,0,0,.5)'; f.shadowBlur=30; f.shadowOffsetY=-6; frontP(f); { const g=f.createLinearGradient(0,H*0.88,0,H); g.addColorStop(0,'#1a5144'); g.addColorStop(1,'#0f3229'); f.fillStyle=g; } f.fill(); f.restore();
+  for(const [tx,th] of [[0.025,0.42],[0.085,0.3],[0.95,0.4],[0.995,0.5],[0.885,0.24]]) paperTree(f,tx*W,H*1.0,th*H,'#f3e6c8','#d9c59c');
+  paperFigure(f,W*0.335,H*0.985,H*0.27,{robeL:'#e9d4a8',robeD:'#cdb282',inner:'#2f7a66',hoodL:'#efdcb3',hoodD:'#d2b98a'});
+  paperFigure(f,W*0.665,H*0.985,H*0.3,{robeL:'#c9733f',robeD:'#a65832',inner:'#e9d4a8',hoodL:'#e7d0a3',hoodD:'#c9b07f',staff:'#8a5a32'});
+  // 떨어지는 종이 눈
+  const flakes=Array.from({length:46},()=>({x:r(),y:r()*1.1,s:0.004+r()*0.007,sp:0.02+r()*0.035,dr:r()*6.28,rot:r()*6.28,vr:(r()-0.5)*1.5,col:r()<0.6?'#f6ead0':'#e8c98a'}));
+  // 먼 산 두 겹은 배경에 고정해 가볍게, 가장 가까운 산만 천천히 움직임
+  for(const L of layers.slice(0,2)) c.drawImage(L.c,-W*0.03,0,W*1.06,H);
+  return {layers:layers.slice(2), hill:hc,
+    animSky(x,W,H,t,al){ const k=H/1080;
+      for(const s of stars){ const sw=Math.sin(t*s.sp+s.ph); let px,py,rot;
+        if(s.hang){ const L=s.y*H, ang=sw*0.06; px=s.x*W+Math.sin(ang)*L; py=Math.cos(ang)*L; rot=ang*1.5+Math.sin(t*0.3+s.ph)*0.08;
+          x.globalAlpha=al*0.7; x.strokeStyle='#e9d9b2'; x.lineWidth=Math.max(1,k*1.4); x.beginPath(); x.moveTo(s.x*W,0); x.lineTo(px,py-s.R*H*0.95); x.stroke(); }
+        else { px=s.x*W; py=s.y*H+sw*H*0.006; rot=sw*0.15; }
+        x.globalAlpha=al; x.save(); x.translate(px,py); x.rotate(rot); const sz=s.spr.width*k; x.drawImage(s.spr,-sz/2,-sz/2,sz,sz); x.restore(); }
+      x.globalAlpha=1; },
+    animFront(x,W,H,t,al){ for(const p of flakes){ const yy=((p.y+t*p.sp)%1.1)-0.05, xx=p.x+0.015*Math.sin(t*0.6+p.dr), R=p.s*H;
+      x.globalAlpha=al*0.85; x.save(); x.translate(xx*W,yy*H); x.rotate(p.rot+t*p.vr); x.fillStyle=p.col;
+      x.beginPath(); for(let k=0;k<12;k++){ const a=k*Math.PI/6, rr=k%2?R*0.45:R; x.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } x.closePath(); x.fill(); x.restore(); }
+      x.globalAlpha=1; } };
+};
+PAINTERS.blue=function(c,f,W,H,r,hillP,hillTop,frontP){
+  { const g=c.createRadialGradient(W*0.3,H*0.3,0,W*0.3,H*0.3,W*0.95); g.addColorStop(0,'#3d72f5'); g.addColorStop(0.3,'#2149cf'); g.addColorStop(0.62,'#122a93'); g.addColorStop(1,'#060a38'); c.fillStyle=g; c.fillRect(0,0,W,H); }
+  for(let i=0;i<20;i++) blob(c,r()*W,r()*H*0.7,H*(0.1+r()*0.2),'120,170,255',0.05);
+  starDust(c,r,W,H,600,null,0.8,0.7);
+  const sp=[]; for(let i=0;i<26;i++){ const R=(0.025+Math.pow(r(),2)*0.07)*H; sp.push({x:r(),y:0.03+r()*0.62,R,spr:sparkleSprite(R,r()<0.7?'200,215,255':'255,255,255'),sp:0.4+r()*1.1,ph:r()*6.28,rs:(r()-0.5)*0.15}); }
+  const tW=Math.round(W*0.26), tH=Math.round(H*0.78), tree=scribbleTree(tW,tH,77), tx=0.8, tb=ground(0.8)+0.02;
+  const topStar=paperStarSprite(H*0.035,5,'#ffffff','#dfe7ff');
+  const hc=mkCanvas(W,H), h=hc.getContext('2d');
+  tornEdgePath(h,W,H,r,px=>{ const fx=px/W; let best=GROUND_PTS[0]; for(const q of GROUND_PTS) if(Math.abs(q[0]-fx)<Math.abs(best[0]-fx)) best=q; return best[1]*H; },7);
+  { const g=h.createLinearGradient(0,H*0.76,0,H); g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#d6e2fb'); h.fillStyle=g; } h.save(); h.shadowColor='rgba(0,10,60,.5)'; h.shadowBlur=30; h.shadowOffsetY=-6; h.fill(); h.restore();
+  strokes(h,()=>tornEdgePath(h,W,H,mulberry(3),px=>{ const fx=px/W; let best=GROUND_PTS[0]; for(const q of GROUND_PTS) if(Math.abs(q[0]-fx)<Math.abs(best[0]-fx)) best=q; return best[1]*H; },0),r,900,[0,H*0.76,W,H],['rgba(150,175,235,.6)','rgba(200,215,250,.8)'],[20,60],0.06,0.3,2);
+  f.save(); f.shadowColor='rgba(0,10,60,.45)'; f.shadowBlur=26; f.shadowOffsetY=-5;
+  tornEdgePath(f,W,H,r,px=>{ const fx=px/W; return H*(0.93+(-0.05*Math.sin(fx*Math.PI*2.2+0.4))*0.6+ (fx>0.4&&fx<0.6?0.02:0)); },6);
+  { const g=f.createLinearGradient(0,H*0.86,0,H); g.addColorStop(0,'#fbfdff'); g.addColorStop(1,'#dfe8fb'); f.fillStyle=g; } f.fill(); f.restore();
+  return { hill:hc,
+    animSky(x,W,H,t,al){ const k=H/1080;
+      // 하늘을 쓸고 지나가는 빛
+      const sw=((t*0.03)%1.6)-0.3; x.save(); x.globalAlpha=al*0.07; x.translate(sw*W,0); x.rotate(0.35); const g=x.createLinearGradient(-W*0.08,0,W*0.08,0); g.addColorStop(0,'rgba(180,210,255,0)'); g.addColorStop(0.5,'rgba(200,225,255,1)'); g.addColorStop(1,'rgba(180,210,255,0)'); x.fillStyle=g; x.fillRect(-W*0.08,-H,W*0.16,H*3); x.restore();
+      for(const s of sp){ const tw=0.55+0.45*Math.sin(t*s.sp+s.ph), sz=s.spr.width*k*(0.75+0.35*tw)*(H/1080/k);
+        x.globalAlpha=al*tw; x.save(); x.translate(s.x*W,s.y*H); x.rotate(t*s.rs); x.drawImage(s.spr,-sz/2,-sz/2,sz,sz); x.restore(); }
+      const bx=tx*W, by=tb*H, tw2=tW*W/1920, th2=tH*W/1920;
+      x.globalAlpha=al; glowAt(x,bx,by-th2*0.5,th2*0.55,'150,190,255',0.18+0.05*Math.sin(t*1.2));
+      x.drawImage(tree,bx-tw2/2,by-th2,tw2,th2);
+      const sy=by-th2+th2*0.06, pu=1+0.08*Math.sin(t*2.2); glowAt(x,bx,sy,H*0.09*pu,'255,255,255',0.45*al);
+      x.save(); x.translate(bx,sy); x.rotate(Math.sin(t*0.6)*0.08); const ss=topStar.width*(H/1080)*pu; x.drawImage(topStar,-ss/2,-ss/2,ss,ss); x.restore();
+      x.globalAlpha=1; } };
+};
+function drawPaperStable(x,W,H,t,G){
+  const cx=W*0.5, base=H*0.985, sw=H*0.38, sh=H*0.22, warm=0.6+0.4*G+0.06*Math.sin(t*2.2);
+  glowAt(x,cx,base-sh*0.3,sw*(1.1+0.6*G),'255,200,120',0.3*warm);
+  const L=cx-sw*0.42, R=cx+sw*0.42, top=base-sh*0.58;
+  x.save(); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=H*0.03; x.shadowOffsetX=H*0.012;
+  x.fillStyle='#b8693c'; x.fillRect(L,top,(R-L)*0.6,base-top); x.fillStyle='#934f2c'; x.fillRect(L+(R-L)*0.6,top,(R-L)*0.4,base-top);
+  x.fillStyle='#f2e3c2'; x.beginPath(); x.moveTo(cx-sw*0.62,top+sh*0.05); x.lineTo(cx,base-sh); x.lineTo(cx,top+sh*0.05); x.closePath(); x.fill();
+  x.fillStyle='#d4bd92'; x.beginPath(); x.moveTo(cx,base-sh); x.lineTo(cx+sw*0.62,top+sh*0.05); x.lineTo(cx,top+sh*0.05); x.closePath(); x.fill();
+  x.restore();
+  x.strokeStyle='rgba(255,255,255,.25)'; x.lineWidth=1.5; x.beginPath(); x.moveTo(cx,base-sh); x.lineTo(cx,top+sh*0.05); x.stroke();
+  paperStarShape(x,cx,base-sh-H*0.035,H*0.03,8,'#f6e1ad','#cfa85f');
+  const ow=sw*0.48, oh=sh*0.5, og=x.createRadialGradient(cx,base-oh*0.3,0,cx,base-oh*0.3,ow*0.85);
+  og.addColorStop(0,`rgba(255,236,175,${Math.min(1,warm)})`); og.addColorStop(0.6,`rgba(240,165,80,${0.85*Math.min(1,warm)})`); og.addColorStop(1,'rgba(110,50,25,0.95)');
+  x.fillStyle=og; x.beginPath(); x.moveTo(cx-ow/2,base); x.lineTo(cx-ow/2,base-oh*0.75); x.quadraticCurveTo(cx,base-oh*1.15,cx+ow/2,base-oh*0.75); x.lineTo(cx+ow/2,base); x.closePath(); x.fill();
+  x.fillStyle='#e9d3a6'; x.beginPath(); x.moveTo(cx-ow*0.3,base-oh*0.34); x.lineTo(cx+ow*0.3,base-oh*0.34); x.lineTo(cx+ow*0.2,base-oh*0.02); x.lineTo(cx-ow*0.2,base-oh*0.02); x.closePath(); x.fill();
+  x.fillStyle='#cdb182'; x.beginPath(); x.moveTo(cx,base-oh*0.34); x.lineTo(cx+ow*0.3,base-oh*0.34); x.lineTo(cx+ow*0.2,base-oh*0.02); x.lineTo(cx,base-oh*0.02); x.closePath(); x.fill();
+  glowAt(x,cx,base-oh*0.42,ow*0.32,'255,250,230',0.95);
+  x.fillStyle='rgba(255,252,240,.95)'; x.beginPath(); x.ellipse(cx,base-oh*0.41,ow*0.11,ow*0.05,0,0,6.283); x.fill();
+}
+
 const PAINT=new Map();
 function paintScene(id,A){
   const W=1920, H=Math.round(1920/A), back=mkCanvas(W,H), front=mkCanvas(W,H), c=back.getContext('2d'), f=front.getContext('2d');
@@ -1460,10 +1630,26 @@ function paintScene(id,A){
   const hillP=ctx=>{ ctx.beginPath(); ctx.moveTo(0,H*HILL[0][1]); for(const s of HILL) ctx.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); };
   const hillTop=ctx=>{ ctx.beginPath(); ctx.moveTo(0,H*HILL[0][1]); for(const s of HILL) ctx.quadraticCurveTo(W*s[2],H*s[3],W*s[4],H*s[5]); };
   const frontP=ctx=>{ ctx.beginPath(); ctx.moveTo(0,H*0.93); ctx.quadraticCurveTo(W*0.3,H*0.88,W*0.5,H*0.95); ctx.quadraticCurveTo(W*0.75,H*1.0,W,H*0.9); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); };
-  try{ PAINTERS[id](c,f,W,H,r,hillP,hillTop,frontP); }catch(e){ console.error(e); }
+  const sc=SCENES.find(q=>q.id===id);
+  if(sc&&sc.custom){ return {back:null,front:null,custom:sc}; }
+  let extra={}; try{ extra=PAINTERS[id](c,f,W,H,r,hillP,hillTop,frontP)||{}; }catch(e){ console.error(e); }
   canvasTexture(c,W,H,0.22,'overlay'); canvasTexture(f,W,H,0.1,'source-atop');
-  return {back,front};
+  return Object.assign({back,front},extra);
 }
+function drawCover(x,img,W,H,t){ const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height; if(!iw) return;
+  const z=1.06+0.04*Math.sin(t*0.035), sc=Math.max(W/iw,H/ih)*z, dw=iw*sc, dh=ih*sc, ox=(W-dw)/2+Math.sin(t*0.021)*(dw-W)*0.4, oy=(H-dh)/2+Math.cos(t*0.017)*(dh-H)*0.4;
+  x.drawImage(img,ox,oy,dw,dh); }
+function drawSceneBack(x,P,W,H,t,al){
+  if(al<=0.001) return; x.globalAlpha=al;
+  if(P.custom){ drawCover(x,P.custom.img,W,H,t); x.globalAlpha=1; for(const m of MOTES){ const yy=((m.y-t*m.sp)%1+1)%1; glowAt(x,(m.x+0.01*Math.sin(t+m.ph))*W,yy*H,m.r*H/1000*5,'255,240,210',al*0.35*(0.5+0.5*Math.sin(t*2+m.ph))); } return; }
+  x.drawImage(P.back,0,0,W,H);
+  if(P.animSky) P.animSky(x,W,H,t,al);
+  x.globalAlpha=al;
+  if(P.layers) for(const L of P.layers){ const dx=Math.sin(t*L.sp+L.ph)*L.amp*W; x.drawImage(L.c,-W*0.03+dx,0,W*1.06,H); }
+  if(P.hill) x.drawImage(P.hill,0,0,W,H);
+  x.globalAlpha=1;
+}
+function drawSceneFront(x,P,W,H,t,al){ if(al<=0.001||!P.front) return; x.globalAlpha=al; x.drawImage(P.front,0,0,W,H); x.globalAlpha=1; }
 function getPaint(id,W,H){ const A=W/H, key=id+'|'+A.toFixed(2); let p=PAINT.get(key); if(!p){ p=paintScene(id,A); PAINT.set(key,p); } return p; }
 function prewarmPaint(){ const A=scene.A||16/9; let i=0; const step=()=>{ if(i>=SCENES.length) return; getPaint(SCENES[i].id,1600,Math.round(1600/A)); i++; setTimeout(step,60); }; setTimeout(step,200); }
 function drawStable(x,W,H,t,G,wSnow){
@@ -1511,6 +1697,20 @@ function drawSnow(x,W,H,t,u,w){
   for(const f of FLAKES){ const yy=((f.y+t*f.sp)%1.1)-0.05, xx=f.x+0.02*Math.sin(t*f.dr+f.ph); x.globalAlpha=w*0.85; x.beginPath(); x.arc(xx*W,yy*H,f.r*u*2.2,0,6.283); x.fill(); }
   x.globalAlpha=1;
 }
+let customBgs=[];
+async function saveCustomBgs(){ await metaPut('customBgs',customBgs.map(b=>({id:b.id,name:b.name,dataURL:b.dataURL}))); }
+async function addCustomScene(b){
+  const img=await loadImg(b.dataURL);
+  SCENES.push({id:b.id,name:b.name,custom:true,img,sky:['#444','#555','#666','#777'],stars:0,cap:'',capRef:''});
+}
+async function removeCustomBg(id){
+  const i=SCENES.findIndex(q=>q.id===id); if(i<0) return;
+  const curId=SCENES[scene.bg.cur].id, prevId=scene.bg.prev>=0?SCENES[scene.bg.prev].id:null;
+  SCENES.splice(i,1); customBgs=customBgs.filter(b=>b.id!==id); S.bgScenes=(S.bgScenes||[]).filter(x=>x!==id); saveS(); await saveCustomBgs();
+  for(const k of [...PAINT.keys()]) if(k.startsWith(id+'|')) PAINT.delete(k);
+  let ci=SCENES.findIndex(q=>q.id===curId); if(ci<0) ci=bgEnabled()[0]; scene.bg.cur=ci; scene.bg.prev=-1;
+  renderBgList();
+}
 function renderBgList(){
   const box=$('#bgList'); if(!box) return; box.innerHTML='';
   SCENES.forEach((sc,i)=>{
@@ -1518,9 +1718,20 @@ function renderBgList(){
     d.innerHTML=`<input type="checkbox" title="자동으로 바뀔 때 포함" ${(S.bgScenes||[]).includes(sc.id)?'checked':''}><span class="sw" style="background:linear-gradient(180deg,${sc.sky[1]},${sc.sky[3]})"></span><span>${sc.name}</span><button class="btn">지금 보기</button>`;
     d.querySelector('input').addEventListener('change',e=>{ const set=new Set(S.bgScenes||[]); e.target.checked?set.add(sc.id):set.delete(sc.id); S.bgScenes=SCENES.map(s=>s.id).filter(id=>set.has(id)); saveS(); });
     d.querySelector('button').addEventListener('click',()=>setBg(i));
+    if(sc.custom){ const del=document.createElement('button'); del.className='btn ghost'; del.textContent='✕'; del.title='이 배경 지우기'; del.style.marginLeft='4px';
+      del.addEventListener('click',async()=>{ if(!await confirmBox('이 배경 이미지를 지울까요?','지우기')) return; removeCustomBg(sc.id); }); d.appendChild(del); }
     box.appendChild(d);
   });
 }
+$('#bgIn').addEventListener('change',async e=>{
+  const files=[...e.target.files]; e.target.value='';
+  for(const f of files){
+    try{ const c=await fileToCanvas(f); const big=fitCanvas(c,1920); const b={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), name:'내 배경 '+(customBgs.length+1), dataURL:big.toDataURL('image/jpeg',0.9)};
+      customBgs.push(b); await addCustomScene(b); S.bgScenes=[...(S.bgScenes||[]),b.id]; saveS(); }
+    catch(err){ toast('이미지를 열지 못했어요: '+f.name); }
+  }
+  await saveCustomBgs(); renderBgList(); toast('배경을 추가했어요. ‘지금 보기’로 확인해 보세요.');
+});
 function starPath(x,cx,cy,R){
   x.beginPath();
   for(let k=0;k<16;k++){ const an=-Math.PI/2+k*Math.PI/8, r=k%2?R*0.26:(k===8?R*3.3:k===0?R*2.1:k%4===0?R*2.0:R*0.95);
@@ -1537,7 +1748,7 @@ function render(tg,t){
   const BW=bgWeights(t);
   const wOf=id=>(BW.B.id===id?BW.p:0)+(BW.A&&BW.A.id===id?1-BW.p:0)+(!BW.A&&BW.B.id===id?1-BW.p:0);
   const PA=BW.A?getPaint(BW.A.id,W,H):null, PB=getPaint(BW.B.id,W,H);
-  if(PA){ x.drawImage(PA.back,0,0,W,H); x.globalAlpha=BW.p; x.drawImage(PB.back,0,0,W,H); x.globalAlpha=1; } else x.drawImage(PB.back,0,0,W,H);
+  if(PA){ drawSceneBack(x,PA,W,H,t,1); drawSceneBack(x,PB,W,H,t,BW.p); } else drawSceneBack(x,PB,W,H,t,1);
   // 반짝이는 별
   const wSt=SCENES.reduce((a,sc)=>a+wOf(sc.id)*sc.stars,0);
   if(wSt>0.02){ x.strokeStyle='#ffffff'; x.lineWidth=Math.max(1,H*0.0012); for(let i=0;i<60;i++){ const s0=STARS[i], tw=Math.sin(t*s0.sp*0.7+s0.ph); if(tw<0.55) continue; const a=wSt*(tw-0.55)*2.2, px=s0.x*W, py=s0.y*H*0.7, L=H*0.006*(1+s0.r*0.6)*tw;
@@ -1574,13 +1785,14 @@ function render(tg,t){
   const its=scene.items;
   const isIntro=it=>{ const el=t-it.introStart; return el>=0&&el<INTRO_HOLD+1.5; };
   for(const it of its) if(it.kind==='tree'&&!isIntro(it)) drawItem(x,it,W,H,t,G);
-  if(PA){ x.drawImage(PA.front,0,0,W,H); x.globalAlpha=BW.p; x.drawImage(PB.front,0,0,W,H); x.globalAlpha=1; } else x.drawImage(PB.front,0,0,W,H);
-  const wSnow=wOf('snow');
-  drawStable(x,W,H,t,G,wSnow);
-  drawSnow(x,W,H,t,u,wSnow);
+  if(PA){ drawSceneFront(x,PA,W,H,t,1); drawSceneFront(x,PB,W,H,t,BW.p); } else drawSceneFront(x,PB,W,H,t,1);
+  const wSnow=wOf('snow')+wOf('blue'), wPaper=wOf('paper'), wCus=SCENES.filter(q=>q.custom).reduce((a,q)=>a+wOf(q.id),0);
+  if(wCus<0.5||S.stableOnCustom){ if(wPaper>0.5) drawPaperStable(x,W,H,t,G); else drawStable(x,W,H,t,G,wSnow); }
+  drawSnow(x,W,H,t,u,wOf('snow')+0.45*wOf('blue'));
+  if(PA&&PA.animFront){ PA.animFront(x,W,H,t,1-BW.p); } if(PB.animFront) PB.animFront(x,W,H,t,PA?BW.p:1);
   // 액자 같은 가장자리 어둠
   { const vg=x.createRadialGradient(W/2,H*0.45,Math.min(W,H)*0.45,W/2,H*0.45,Math.max(W,H)*0.75); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.42)'); x.fillStyle=vg; x.fillRect(0,0,W,H); }
-  if(S.bgCaption&&G<0.1){ const ct=t-scene.bg.capT, sc=SCENES[scene.bg.cur];
+  if(S.bgCaption&&G<0.1&&!scene.items.some(it=>{ const e=t-it.introStart; return e>=0&&e<INTRO_HOLD+0.5; })){ const ct=t-scene.bg.capT, sc=SCENES[scene.bg.cur];
     if(ct>0&&ct<10&&sc.cap){ x.globalAlpha=clamp(Math.min(ct/1.2,(10-ct)/1.5),0,1)*(1-G*10); x.textAlign='center'; x.textBaseline='middle';
       let fz=H*0.036; x.font=`700 ${Math.round(fz)}px ${SERIF}`; const mw=x.measureText(sc.cap).width; if(mw>W*0.86){ fz*=W*0.86/mw; x.font=`700 ${Math.round(fz)}px ${SERIF}`; }
       x.shadowColor='rgba(0,0,0,.65)'; x.shadowBlur=H*0.015; x.fillStyle='#fff8e6'; x.fillText(sc.cap,W/2,H*0.24);
@@ -1599,19 +1811,6 @@ function render(tg,t){
   }
   for(const it of its) if(it.kind!=='tree'&&!isIntro(it)) drawItem(x,it,W,H,t,G);
   for(const it of its) if(isIntro(it)) drawItem(x,it,W,H,t,G);
-  // 전시 화면 구석 QR
-  if(S.showQR&&qrCanvas&&cloud.ok&&G<0.98){
-    const q=H*0.17, pad=q*0.08, bx=W*0.02;
-    x.font=`700 ${Math.round(H*0.021)}px ${FONT}`; const tw=x.measureText('찍어서 하늘로 보내요').width;
-    const bw=Math.max(q,tw)+pad*2, bh=q+pad*2+H*0.04, by=H*0.97-bh;
-    x.globalAlpha=1-G;
-    x.fillStyle='rgba(255,255,255,.95)'; x.beginPath();
-    if(x.roundRect) x.roundRect(bx,by,bw,bh,H*0.012); else x.rect(bx,by,bw,bh); x.fill();
-    x.imageSmoothingEnabled=false; x.drawImage(qrCanvas,bx+(bw-q)/2,by+pad,q,q); x.imageSmoothingEnabled=true;
-    x.fillStyle='#1b1334'; x.textAlign='center'; x.textBaseline='middle';
-    x.fillText('찍어서 하늘로 보내요',bx+bw/2,by+pad+q+H*0.022);
-    x.globalAlpha=1;
-  }
   for(const p of scene.particles){ x.globalAlpha=clamp(p.life/p.max*1.6,0,1); x.fillStyle=`rgb(${p.c})`; x.beginPath(); x.arc(p.x*W,p.y*H,p.r*u*2,0,6.283); x.fill(); }
   x.globalAlpha=1;
 }
@@ -1637,7 +1836,7 @@ function drawItem(x,it,W,H,t,G){
     for(const L of it.lights){ const tw=0.5+0.5*Math.sin(t*(2+G*2)+L.ph); x.globalAlpha=it.a*(0.35+0.65*tw);
       const lx=L.u*dw, ly=-dh+L.v*dh; glowAt(x,lx,ly,lr*3,L.c,0.6*tw); x.fillStyle=`rgb(${L.c})`; x.beginPath(); x.arc(lx,ly,lr,0,6.283); x.fill(); }
   } else {
-    x.translate(px,py); x.rotate(it.rot); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=H*0.014; x.shadowOffsetY=H*0.006; x.drawImage(it.img,-dw/2,-dh/2,dw,dh); x.shadowBlur=0; x.shadowOffsetY=0;
+    x.translate(px,py); x.rotate(it.rot); if(el>=0&&el<0.9) x.scale(Math.max(0.04,Math.sin(el/0.9*Math.PI/2)),1); x.shadowColor='rgba(0,0,0,.45)'; x.shadowBlur=H*0.014; x.shadowOffsetY=H*0.006; x.drawImage(it.img,-dw/2,-dh/2,dw,dh); x.shadowBlur=0; x.shadowOffsetY=0;
   }
   x.restore(); x.globalAlpha=1;
   if(S.showNames&&it.name&&s>H*0.04){
@@ -1690,7 +1889,7 @@ document.addEventListener('keydown',onKey);
 
 /* ---------------- 반복 루프 ---------------- */
 const mini=$('#mini'), inCanvas=$('#inCanvas');
-let loopId=0, lastT=now(), lastTickAt=0;
+let loopId=0, lastT=now(), lastTickAt=0, miniTick=0;
 function tick(id){
   if(id!==loopId) return;
   const t=now(), dt=Math.min(0.05,Math.max(0.001,t-lastT)); lastT=t; lastTickAt=t;
@@ -1701,7 +1900,7 @@ function tick(id){
   if((+S.bgEvery||0)>0 && !scene.gather && t-scene.bg.last>(+S.bgEvery)*60) nextBg();
   try{ drawPreview(); }catch(e){}
   update(t,dt);
-  try{ render({c:mini,win:window,cap:1},t); }catch(e){}
+  miniTick=(miniTick+1)%3; if(!(po||inlineOn)||miniTick===0) try{ render({c:mini,win:window,cap:1},t); }catch(e){}
   if(inlineOn) try{ render({c:inCanvas,win:window,cap:1.5},t); }catch(e){}
   if(po) try{ render({c:popupCanvas,win:popup,cap:1.5},t); }catch(e){}
   (po?popup:window).requestAnimationFrame(()=>tick(id));
@@ -1727,6 +1926,7 @@ window.__xmasTest={ kinds:()=>drawings.map(d=>d.kind),
       if(perm==='granted'){ watching=true; } else { watching=false; folderErr='새로고침 후에는 한 번 더 허락이 필요해요. ‘폴더 다시 연결’을 눌러 주세요.'; $('#btnResume').hidden=false; }
       updateFolderStatus(); }
   } else toast('이 브라우저에서는 자동 저장이 안 돼요. 행사 후 ‘백업 내보내기’를 꼭 해 주세요.',5000);
+  try{ const cb=(await metaGet('customBgs'))||[]; for(const b of cb){ customBgs.push(b); await addCustomScene(b); } }catch(e){}
   { const l=bgEnabled(); scene.bg.cur=l[0]; }
   renderBgList(); renderGallery(); listCams(); kick(); prewarmPaint();
   if(S.cloudOn&&parseCfg(S.fbCfg)) cloudConnect(true);
